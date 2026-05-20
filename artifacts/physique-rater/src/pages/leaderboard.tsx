@@ -245,8 +245,10 @@ export default function Leaderboard() {
                           : <div className="w-full h-full flex items-center justify-center text-primary font-display text-sm">{entry.displayName[0]}</div>}
                       </div>
                       <div className="min-w-0">
-                        <div className="font-mono text-sm text-foreground truncate">
-                          {entry.displayName}
+                        <div className="font-mono text-sm truncate">
+                          <Link href={`/profile/${entry.userId}`} className="text-foreground hover:text-primary transition-colors">
+                            {entry.displayName}
+                          </Link>
                           {isMe && <span className="ml-2 text-primary text-xs">(you)</span>}
                         </div>
                         <EloTier elo={entry.eloRating} />

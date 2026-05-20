@@ -1,5 +1,5 @@
 import type { Server, Socket } from "socket.io";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, matchHistoryTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -238,7 +238,7 @@ export function setupGameManager(io: Server) {
           finalScores: [p0.score, p1.score],
         });
 
-        updateElo(winner, loser).catch((err) =>
+        updateElo(winner, loser, winner.score, loser.score).catch((err) =>
           logger.error({ err }, "Failed to update ELO"),
         );
         cleanupRoom(io, roomId);
@@ -313,7 +313,7 @@ function newRating(rating: number, expected: number, actual: number, k = 32): nu
   return Math.round(rating + k * (actual - expected));
 }
 
-async function updateElo(winner: Player, loser: Player): Promise<void> {
+async function updateElo(winner: Player, loser: Player, winnerScore: number, loserScore: number): Promise<void> {
   const winnerId = winner.userId;
   const loserId = loser.userId;
   const userIds = [winnerId, loserId].filter((id): id is string => !!id);
@@ -329,14 +329,25 @@ async function updateElo(winner: Player, loser: Player): Promise<void> {
     const expectedWin = calcExpected(winnerElo, loserElo);
     const expectedLoss = calcExpected(loserElo, winnerElo);
     const newWinnerElo = newRating(winnerElo, expectedWin, 1);
-    const newLoserElo = newRating(loserElo, expectedLoss, 0);
+    const newLoserElo = Math.max(100, newRating(loserElo, expectedLoss, 0));
+    const winnerEloChange = newWinnerElo - winnerElo;
+    const loserEloChange = newLoserElo - loserElo;
     await Promise.all([
       db.update(usersTable)
         .set({ eloRating: newWinnerElo, wins: sql`${usersTable.wins} + 1`, updatedAt: new Date() })
         .where(eq(usersTable.id, winnerId)),
       db.update(usersTable)
-        .set({ eloRating: Math.max(100, newLoserElo), losses: sql`${usersTable.losses} + 1`, updatedAt: new Date() })
+        .set({ eloRating: newLoserElo, losses: sql`${usersTable.losses} + 1`, updatedAt: new Date() })
         .where(eq(usersTable.id, loserId)),
+      db.insert(matchHistoryTable).values({
+        player1Id: winnerId,
+        player2Id: loserId,
+        winnerId: winnerId,
+        player1Score: winnerScore,
+        player2Score: loserScore,
+        player1EloChange: winnerEloChange,
+        player2EloChange: loserEloChange,
+      }),
     ]);
     logger.info({ winnerId, newWinnerElo, loserId, newLoserElo }, "ELO updated");
   } else if (winnerId) {

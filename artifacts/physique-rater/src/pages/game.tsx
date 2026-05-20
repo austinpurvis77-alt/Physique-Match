@@ -3,7 +3,7 @@ import { io, Socket } from "socket.io-client";
 import { Link, useSearch } from "wouter";
 import { useRateFrame } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { CameraOff, AlertTriangle, Trophy, Mic, MicOff, Copy, Check, Users2 } from "lucide-react";
+import { CameraOff, AlertTriangle, Trophy, Mic, MicOff, Copy, Check, Users2, BarChart2, X } from "lucide-react";
 import * as poseDetection from "@tensorflow-models/pose-detection";
 import "@tensorflow/tfjs-backend-webgl";
 
@@ -25,6 +25,93 @@ const TIER_MAP: Record<number, { label: string; color: string }> = {
 interface RoundResult {
   score: number;
   feedback: string;
+}
+
+type Breakdown = { muscleDef?: number; leanness?: number; vascularity?: number; vTaper?: number; posture?: number };
+
+const BD_METRICS: { key: keyof Breakdown; label: string }[] = [
+  { key: "muscleDef",  label: "Muscle Def" },
+  { key: "leanness",  label: "Leanness"   },
+  { key: "vascularity", label: "Vascularity" },
+  { key: "vTaper",    label: "V-Taper"    },
+  { key: "posture",   label: "Posture"    },
+];
+
+function RadarChart({ breakdown }: { breakdown: Breakdown }) {
+  const size = 160;
+  const cx = size / 2;
+  const cy = size / 2;
+  const maxR = 52;
+  const n = BD_METRICS.length;
+
+  const angleOf = (i: number) => (i * 2 * Math.PI / n) - Math.PI / 2;
+
+  const pts = BD_METRICS.map((m, i) => {
+    const val = breakdown[m.key] ?? 5;
+    const r = (val / 10) * maxR;
+    const a = angleOf(i);
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a), val, label: m.label };
+  });
+
+  const outerPts = BD_METRICS.map((_, i) => {
+    const a = angleOf(i);
+    return { x: cx + maxR * Math.cos(a), y: cy + maxR * Math.sin(a) };
+  });
+
+  const labelPts = BD_METRICS.map((m, i) => {
+    const a = angleOf(i);
+    const lr = maxR + 22;
+    return { x: cx + lr * Math.cos(a), y: cy + lr * Math.sin(a), label: m.label, val: breakdown[m.key] ?? "?" };
+  });
+
+  const gridRings = [2, 4, 6, 8, 10].map(v => {
+    const r = (v / 10) * maxR;
+    return BD_METRICS.map((_, i) => {
+      const a = angleOf(i);
+      return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
+    }).join(" ");
+  });
+
+  const fillPoints = pts.map(p => `${p.x},${p.y}`).join(" ");
+
+  return (
+    <svg width={size} height={size} className="overflow-visible">
+      {gridRings.map((ringPts, i) => (
+        <polygon key={i} points={ringPts} fill="none" stroke="rgba(0,255,136,0.08)" strokeWidth="1" />
+      ))}
+      {outerPts.map((op, i) => (
+        <line key={i} x1={cx} y1={cy} x2={op.x} y2={op.y} stroke="rgba(0,255,136,0.12)" strokeWidth="1" />
+      ))}
+      <polygon points={fillPoints} fill="rgba(0,255,136,0.12)" stroke="#00ff88" strokeWidth="1.5" strokeLinejoin="round" />
+      {pts.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="3" fill="#00ff88" />
+      ))}
+      {labelPts.map((lp, i) => (
+        <g key={i}>
+          <text x={lp.x} y={lp.y - 5} textAnchor="middle" fill="rgba(0,255,136,0.55)" style={{ fontSize: 7, fontFamily: "monospace" }}>
+            {lp.label}
+          </text>
+          <text x={lp.x} y={lp.y + 6} textAnchor="middle" fill="#00ff88" style={{ fontSize: 9, fontFamily: "monospace", fontWeight: "bold" }}>
+            {lp.val}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function MetricBar({ label, value }: { label: string; value?: number }) {
+  const v = value ?? 0;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider w-20 flex-shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 bg-secondary/50 relative overflow-hidden">
+        <div className="absolute top-0 left-0 bottom-0 bg-primary transition-all duration-700"
+          style={{ width: `${(v / 10) * 100}%` }} />
+      </div>
+      <span className="font-mono text-xs text-primary w-4 text-right">{value ?? "—"}</span>
+    </div>
+  );
 }
 
 const POSE_CONNECTIONS: [number, number][] = [
@@ -545,6 +632,8 @@ function GameArena({ onRematch, initialHostCode, initialJoinCode }: {
   const [muted, setMuted] = useState(false);
   const [privateRoomError, setPrivateRoomError] = useState<string | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [breakdown, setBreakdown] = useState<{ muscleDef?: number; leanness?: number; vascularity?: number; vTaper?: number; posture?: number } | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const prevOpponentScoreRef = useRef(0);
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -771,6 +860,7 @@ function GameArena({ onRematch, initialHostCode, initialJoinCode }: {
         const result = await rateFrameMutateRef.current({ data: { imageData: base64Data } });
         setLastRoundScore(result.score);
         setScoreHistory(prev => [...prev, { score: result.score, feedback: result.feedback }]);
+        if (result.breakdown) setBreakdown(result.breakdown);
         socketRef.current.emit("score-update", { score: result.score, feedback: result.feedback });
       } catch (err) {
         console.error("Failed to rate frame", err);
@@ -930,6 +1020,19 @@ function GameArena({ onRematch, initialHostCode, initialJoinCode }: {
               {muted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
               {muted ? "Muted" : "Mic On"}
             </button>
+            {/* Analysis sidebar toggle */}
+            <button
+              onClick={() => setSidebarOpen(o => !o)}
+              title="Toggle AI breakdown"
+              className={`mt-1 flex items-center gap-1 px-2 py-1 border text-xs font-mono uppercase transition-colors ${
+                sidebarOpen
+                  ? "border-primary text-primary bg-primary/10"
+                  : "border-primary/30 text-primary/60 hover:border-primary hover:text-primary"
+              }`}
+            >
+              <BarChart2 className="w-3 h-3" />
+              Analysis
+            </button>
           </div>
 
           <div className="flex-1 flex flex-col items-end">
@@ -945,6 +1048,47 @@ function GameArena({ onRematch, initialHostCode, initialJoinCode }: {
           </div>
         </div>
       </header>
+
+      {/* AI Breakdown Sidebar */}
+      {sidebarOpen && (
+        <div className="absolute top-0 right-0 bottom-0 z-30 w-64 bg-black/95 border-l border-border backdrop-blur-sm flex flex-col overflow-y-auto animate-in slide-in-from-right duration-200">
+          <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border/50">
+            <div className="flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-primary" />
+              <span className="font-mono text-xs text-primary uppercase tracking-widest font-bold">AI Analysis</span>
+            </div>
+            <button onClick={() => setSidebarOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {breakdown ? (
+            <div className="flex flex-col items-center gap-5 px-4 py-5">
+              {/* Radar chart */}
+              <div className="flex items-center justify-center py-2">
+                <RadarChart breakdown={breakdown} />
+              </div>
+
+              {/* Metric bars */}
+              <div className="w-full flex flex-col gap-2.5">
+                {BD_METRICS.map(m => (
+                  <MetricBar key={m.key} label={m.label} value={breakdown[m.key]} />
+                ))}
+              </div>
+
+              <p className="font-mono text-[10px] text-muted-foreground/50 text-center leading-relaxed">
+                Updated every round based on your live camera feed
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+              <BarChart2 className="w-8 h-8 text-primary/20 animate-pulse" />
+              <p className="font-mono text-xs text-muted-foreground">Waiting for first AI rating...</p>
+              <p className="font-mono text-[10px] text-muted-foreground/50">Analysis will appear after the first round</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Videos */}
       <div className="flex-1 flex flex-col md:flex-row relative pt-36 md:pt-32 pb-4">

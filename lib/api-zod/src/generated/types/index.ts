@@ -22,5 +22,8 @@ export * from './healthStatus';
 export * from './leaderboardEntry';
 export * from './leaderboardResponse';
 export * from './logoutSuccess';
+export * from './matchHistoryEntry';
 export * from './mobileTokenExchangeRequest';
 export * from './mobileTokenExchangeSuccess';
+export * from './physiqueBreakdown';
+export * from './userProfileResponse';

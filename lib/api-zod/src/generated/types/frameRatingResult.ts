@@ -5,6 +5,7 @@
  * OMEGAINS API — AI physique rating video chat arena
  * OpenAPI spec version: 0.1.0
  */
+import type { PhysiqueBreakdown } from './physiqueBreakdown';
 
 export interface FrameRatingResult {
   /**
@@ -15,4 +16,5 @@ export interface FrameRatingResult {
   score: number;
   /** Brief AI feedback on the physique */
   feedback: string;
+  breakdown?: PhysiqueBreakdown;
 }

@@ -62,6 +62,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/GameStats"
 
+  /profile/{userId}:
+    get:
+      operationId: getUserProfile
+      tags: [game]
+      summary: Get public profile for a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResponse"
+        "404":
+          description: User not found
+
   /game/active-rooms:
     get:
       operationId: getActiveRooms
@@ -242,6 +263,30 @@ components:
           type: string
           description: Base64-encoded JPEG image frame from user camera
 
+    PhysiqueBreakdown:
+      type: object
+      properties:
+        muscleDef:
+          type: number
+          minimum: 1
+          maximum: 10
+        leanness:
+          type: number
+          minimum: 1
+          maximum: 10
+        vascularity:
+          type: number
+          minimum: 1
+          maximum: 10
+        vTaper:
+          type: number
+          minimum: 1
+          maximum: 10
+        posture:
+          type: number
+          minimum: 1
+          maximum: 10
+
     FrameRatingResult:
       type: object
       required: [score, feedback]
@@ -254,6 +299,8 @@ components:
         feedback:
           type: string
           description: Brief AI feedback on the physique
+        breakdown:
+          $ref: '#/components/schemas/PhysiqueBreakdown'
 
     GameStats:
       type: object
@@ -300,6 +347,49 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ActiveRoom'
+
+    MatchHistoryEntry:
+      type: object
+      required: [id, opponentName, opponentId, myScore, opponentScore, won, eloChange, playedAt]
+      properties:
+        id:
+          type: string
+        opponentName:
+          type: string
+        opponentId:
+          type: [string, 'null']
+        myScore:
+          type: integer
+        opponentScore:
+          type: integer
+        won:
+          type: boolean
+        eloChange:
+          type: integer
+        playedAt:
+          type: string
+          format: date-time
+
+    UserProfileResponse:
+      type: object
+      required: [userId, displayName, eloRating, wins, losses, recentMatches]
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+        profileImageUrl:
+          type: [string, 'null']
+        eloRating:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        recentMatches:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchHistoryEntry'
 
     LeaderboardEntry:
       type: object

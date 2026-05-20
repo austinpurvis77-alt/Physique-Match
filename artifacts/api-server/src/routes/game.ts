@@ -79,7 +79,15 @@ SCORING DISCIPLINE:
 - Score 9–10 ONLY for competition-ready physiques.
 - Clothed person: estimate from silhouette, body shape, and any visible contours.
 - Cannot see the body at all: return score 4.
-- Respond ONLY with valid JSON: {"score": <integer 1-10>, "feedback": "<one punchy honest sentence, max 12 words>"}`,
+BREAKDOWN SCORES — also rate each dimension separately on a strict 1–10 integer scale:
+- muscleDef: muscle definition and separation between groups
+- leanness: estimated body fat level (10 = very lean, 1 = very high fat)
+- vascularity: visible veins and striations (10 = highly vascular, 1 = none)
+- vTaper: shoulder-to-waist ratio and overall silhouette (10 = extreme V, 1 = no taper)
+- posture: alignment, symmetry, and how the body presents (10 = perfect, 1 = poor)
+
+Respond ONLY with valid JSON:
+{"score": <integer 1-10>, "feedback": "<one punchy honest sentence, max 12 words>", "breakdown": {"muscleDef": <1-10>, "leanness": <1-10>, "vascularity": <1-10>, "vTaper": <1-10>, "posture": <1-10>}}`,
         },
         {
           role: "user",
@@ -98,7 +106,7 @@ SCORING DISCIPLINE:
 
     const raw = response.choices[0]?.message?.content ?? '{"score":3,"feedback":"Could not assess physique clearly."}';
 
-    let result: { score: number; feedback: string };
+    let result: { score: number; feedback: string; breakdown?: { muscleDef?: number; leanness?: number; vascularity?: number; vTaper?: number; posture?: number } };
     try {
       result = JSON.parse(raw);
     } catch {
@@ -106,7 +114,15 @@ SCORING DISCIPLINE:
     }
 
     const score = Math.min(10, Math.max(1, Math.round(result.score)));
-    res.json({ score, feedback: result.feedback ?? "Keep pushing!" });
+    const clamp = (v: unknown) => typeof v === "number" ? Math.min(10, Math.max(1, Math.round(v))) : undefined;
+    const breakdown = result.breakdown ? {
+      muscleDef: clamp(result.breakdown.muscleDef),
+      leanness: clamp(result.breakdown.leanness),
+      vascularity: clamp(result.breakdown.vascularity),
+      vTaper: clamp(result.breakdown.vTaper),
+      posture: clamp(result.breakdown.posture),
+    } : undefined;
+    res.json({ score, feedback: result.feedback ?? "Keep pushing!", breakdown });
   } catch (err) {
     req.log.error({ err }, "AI rating failed");
     res.json({ score: 5, feedback: "AI is warming up — keep going!" });

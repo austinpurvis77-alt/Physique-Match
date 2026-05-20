@@ -7,6 +7,7 @@ import Home from "@/pages/home";
 import Game from "@/pages/game";
 import Leaderboard from "@/pages/leaderboard";
 import Spectate from "@/pages/spectate";
+import Profile from "@/pages/profile";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/game" component={Game} />
       <Route path="/leaderboard" component={Leaderboard} />
       <Route path="/spectate/:roomId" component={Spectate} />
+      <Route path="/profile/:userId" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );
