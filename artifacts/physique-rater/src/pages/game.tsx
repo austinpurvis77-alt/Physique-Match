@@ -4,6 +4,8 @@ import { Link } from "wouter";
 import { useRateFrame } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { CameraOff, AlertTriangle, Trophy } from "lucide-react";
+import * as poseDetection from "@tensorflow-models/pose-detection";
+import "@tensorflow/tfjs-backend-webgl";
 
 type GameState = "idle" | "queue" | "matched" | "game-over" | "error";
 
@@ -25,118 +27,214 @@ interface RoundResult {
   feedback: string;
 }
 
-const NODES: [number, number][] = [
-  [50, 7],[50, 13],[50, 20],[32, 28],[68, 28],[50, 36],
-  [22, 46],[78, 46],[16, 60],[84, 60],[38, 62],[62, 62],
-  [36, 79],[64, 79],[34, 96],[66, 96],
+const POSE_CONNECTIONS: [number, number][] = [
+  [5, 6],
+  [5, 7], [7, 9],
+  [6, 8], [8, 10],
+  [5, 11], [6, 12],
+  [11, 12],
+  [11, 13], [13, 15],
+  [12, 14], [14, 16],
+  [0, 1], [0, 2],
+  [1, 3], [2, 4],
 ];
 
-const EDGES: [number, number][] = [
-  [0,1],[1,2],[2,3],[2,4],[3,5],[4,5],[3,6],[6,8],[4,7],[7,9],
-  [5,10],[5,11],[3,10],[4,11],[10,11],[10,12],[12,14],[11,13],[13,15],
-];
+function PoseScanOverlay({
+  videoRef,
+  burst,
+}: {
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  burst: boolean;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const detectorRef = useRef<poseDetection.PoseDetector | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const mountedRef = useRef(true);
 
-function PhysiqueScanOverlay({ burst }: { burst: boolean }) {
+  useEffect(() => {
+    mountedRef.current = true;
+
+    async function init() {
+      try {
+        const { setBackend, ready } = await import("@tensorflow/tfjs-core");
+        await setBackend("webgl");
+        await ready();
+
+        const detector = await poseDetection.createDetector(
+          poseDetection.SupportedModels.MoveNet,
+          {
+            modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+          }
+        );
+        if (!mountedRef.current) { detector.dispose(); return; }
+        detectorRef.current = detector;
+        drawLoop();
+      } catch (err) {
+        console.error("Pose detection init failed:", err);
+        drawFallbackLoop();
+      }
+    }
+
+    function drawFallbackLoop() {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      if (!canvas || !video || !mountedRef.current) return;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      rafRef.current = requestAnimationFrame(drawFallbackLoop);
+    }
+
+    function drawLoop() {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const detector = detectorRef.current;
+
+      if (!canvas || !video || !detector || !mountedRef.current) return;
+      if (video.readyState < 2 || video.videoWidth === 0) {
+        rafRef.current = requestAnimationFrame(drawLoop);
+        return;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      detector.estimatePoses(video, { flipHorizontal: false })
+        .then((poses) => {
+          if (!mountedRef.current || !canvas) return;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return;
+
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          if (poses.length === 0) {
+            rafRef.current = requestAnimationFrame(drawLoop);
+            return;
+          }
+
+          const kp = poses[0].keypoints;
+          const MIN_SCORE = 0.3;
+
+          const dotColor = burst ? "#ffffff" : "#00ff88";
+          const edgeColor = burst ? "rgba(255,255,255,0.8)" : "rgba(0,255,136,0.6)";
+          const glowColor = burst ? "rgba(255,255,255,0.9)" : "rgba(0,255,136,0.9)";
+
+          ctx.save();
+          ctx.shadowBlur = burst ? 18 : 10;
+          ctx.shadowColor = glowColor;
+          ctx.lineWidth = burst ? 2.5 : 1.5;
+          ctx.strokeStyle = edgeColor;
+
+          for (const [a, b] of POSE_CONNECTIONS) {
+            const kpA = kp[a];
+            const kpB = kp[b];
+            if (
+              kpA && kpB &&
+              (kpA.score ?? 0) >= MIN_SCORE &&
+              (kpB.score ?? 0) >= MIN_SCORE
+            ) {
+              ctx.beginPath();
+              ctx.moveTo(kpA.x, kpA.y);
+              ctx.lineTo(kpB.x, kpB.y);
+              ctx.stroke();
+            }
+          }
+
+          ctx.shadowBlur = burst ? 24 : 14;
+          ctx.shadowColor = glowColor;
+          ctx.fillStyle = dotColor;
+
+          for (const point of kp) {
+            if ((point.score ?? 0) >= MIN_SCORE) {
+              ctx.beginPath();
+              ctx.arc(point.x, point.y, burst ? 7 : 5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          ctx.restore();
+          rafRef.current = requestAnimationFrame(drawLoop);
+        })
+        .catch(() => {
+          rafRef.current = requestAnimationFrame(drawLoop);
+        });
+    }
+
+    init();
+
+    return () => {
+      mountedRef.current = false;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (detectorRef.current) { detectorRef.current.dispose(); detectorRef.current = null; }
+    };
+  }, [videoRef]);
+
   return (
     <>
       <style>{`
         @keyframes scan-sweep {
-          0%   { transform: translateY(-4px); opacity: 0; }
+          0%   { top: 0; opacity: 0; }
           5%   { opacity: 1; }
           95%  { opacity: 1; }
-          100% { transform: translateY(100%); opacity: 0; }
-        }
-        @keyframes node-pulse {
-          0%, 100% { r: 3; opacity: 0.7; }
-          50%       { r: 5; opacity: 1; }
-        }
-        @keyframes node-burst {
-          0%   { r: 3; opacity: 0.7; }
-          20%  { r: 8; opacity: 1; }
-          60%  { r: 5; opacity: 1; }
-          100% { r: 3; opacity: 0.7; }
-        }
-        @keyframes edge-march { to { stroke-dashoffset: -24; } }
-        @keyframes edge-burst {
-          0%   { opacity: 0.35; stroke-width: 1; }
-          20%  { opacity: 1;    stroke-width: 2; }
-          100% { opacity: 0.35; stroke-width: 1; }
+          100% { top: 100%; opacity: 0; }
         }
         @keyframes scan-label-blink {
           0%, 100% { opacity: 0.6; }
           50%       { opacity: 1; }
         }
+        @keyframes corner-pulse {
+          0%, 100% { opacity: 0.7; }
+          50%       { opacity: 1; }
+        }
+        .scan-sweep-bar {
+          position: absolute;
+          left: 0; right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, transparent 0%, rgba(0,255,136,0.6) 40%, rgba(170,255,221,1) 50%, rgba(0,255,136,0.6) 60%, transparent 100%);
+          animation: scan-sweep 3s ease-in-out infinite;
+          pointer-events: none;
+        }
+        .corner-tl, .corner-tr, .corner-bl, .corner-br {
+          position: absolute;
+          width: 18px;
+          height: 18px;
+          animation: corner-pulse 2s ease-in-out infinite;
+          pointer-events: none;
+        }
+        .corner-tl { top: 8px; left: 8px; border-top: 2px solid #00ff88; border-left: 2px solid #00ff88; }
+        .corner-tr { top: 8px; right: 8px; border-top: 2px solid #00ff88; border-right: 2px solid #00ff88; }
+        .corner-bl { bottom: 8px; left: 8px; border-bottom: 2px solid #00ff88; border-left: 2px solid #00ff88; }
+        .corner-br { bottom: 8px; right: 8px; border-bottom: 2px solid #00ff88; border-right: 2px solid #00ff88; }
+        .scan-label {
+          position: absolute;
+          bottom: 4px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-family: monospace;
+          font-size: 10px;
+          color: #00ff88;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          animation: scan-label-blink 1s ease-in-out infinite;
+          pointer-events: none;
+          text-shadow: 0 0 8px #00ff8899;
+        }
       `}</style>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"
+      <canvas
+        ref={canvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none z-10"
-        style={{ mixBlendMode: "screen" }}>
-        <defs>
-          <filter id="glow-green">
-            <feGaussianBlur stdDeviation="1.2" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <filter id="glow-burst">
-            <feGaussianBlur stdDeviation="2.5" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <linearGradient id="scanGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%"   stopColor="#00ff88" stopOpacity="0" />
-            <stop offset="40%"  stopColor="#00ff88" stopOpacity="0.6" />
-            <stop offset="50%"  stopColor="#aaffdd" stopOpacity="1" />
-            <stop offset="60%"  stopColor="#00ff88" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="#00ff88" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-
-        {EDGES.map(([a, b], i) => {
-          const [x1, y1] = NODES[a];
-          const [x2, y2] = NODES[b];
-          return (
-            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-              stroke={burst ? "#ffffff" : "#00ff88"}
-              strokeOpacity={burst ? 0.9 : 0.35}
-              strokeWidth={burst ? 1.5 : 1}
-              filter={burst ? "url(#glow-burst)" : "url(#glow-green)"}
-              strokeDasharray="6 3"
-              style={{
-                animation: burst ? `edge-burst 1.4s ease-out forwards` : `edge-march 1.2s linear infinite`,
-                animationDelay: burst ? `${i * 0.03}s` : `${i * 0.05}s`,
-              }} />
-          );
-        })}
-
-        {NODES.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={3}
-            fill={burst ? "#ffffff" : "#00ff88"}
-            filter={burst ? "url(#glow-burst)" : "url(#glow-green)"}
-            style={{
-              animation: burst ? `node-burst 1.4s ease-out forwards` : `node-pulse 2s ease-in-out infinite`,
-              animationDelay: burst ? `${i * 0.04}s` : `${(i * 137) % 2000}ms`,
-            }} />
-        ))}
-
-        {!burst && (
-          <rect x="0" y="0" width="100" height="1.5" fill="url(#scanGrad)"
-            style={{ animation: "scan-sweep 3s ease-in-out infinite" }} />
-        )}
-
-        {[
-          { x: 2, y: 2, rx: 1, ry: 1 }, { x: 98, y: 2, rx: -1, ry: 1 },
-          { x: 2, y: 98, rx: 1, ry: -1 }, { x: 98, y: 98, rx: -1, ry: -1 },
-        ].map((c, i) => (
-          <g key={i} stroke={burst ? "#ffffff" : "#00ff88"} strokeWidth="0.8" fill="none"
-            opacity={burst ? 1 : 0.7} filter="url(#glow-green)">
-            <line x1={c.x} y1={c.y} x2={c.x + c.rx * 5} y2={c.y} />
-            <line x1={c.x} y1={c.y} x2={c.x} y2={c.y + c.ry * 5} />
-          </g>
-        ))}
-
-        <text x="50" y="99" textAnchor="middle" fontSize="2.5"
-          fill={burst ? "#ffffff" : "#00ff88"} fontFamily="monospace"
-          style={{ animation: "scan-label-blink 1s ease-in-out infinite" }}>
-          {burst ? "ANALYZING..." : "SCANNING"}
-        </text>
-      </svg>
+        style={{ mixBlendMode: "screen" }}
+      />
+      {!burst && <div className="scan-sweep-bar" />}
+      <div className="corner-tl" />
+      <div className="corner-tr" />
+      <div className="corner-bl" />
+      <div className="corner-br" />
+      <div className="scan-label">{burst ? "ANALYZING..." : "SCANNING"}</div>
     </>
   );
 }
@@ -213,12 +311,13 @@ function GameArena({ onRematch }: GameArenaProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(5);
   const [scanBurst, setScanBurst] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
 
   const prevOpponentScoreRef = useRef(0);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const captureCanvasRef = useRef<HTMLCanvasElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -249,96 +348,117 @@ function GameArena({ onRematch }: GameArenaProps) {
   useEffect(() => { return () => cleanup(); }, [cleanup]);
 
   useEffect(() => {
-    setGameState("queue");
-    const socket = io({ path: "/api/socket.io", transports: ["websocket"] });
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      if (userIdRef.current) socket.emit("identify", { userId: userIdRef.current });
-      socket.emit("join-queue");
-    });
-
-    socket.on("matched", async (data: { roomId: string; role: "caller" | "receiver"; targetScore: number }) => {
-      setGameState("matched");
-      setTargetScore(data.targetScore);
-      setMyScore(0); setOpponentScore(0);
-      setLastRoundScore(null); setOpponentLastRoundScore(null);
-      setScoreHistory([]);
-      setPartnerLeft(false); setWon(null);
-      prevOpponentScoreRef.current = 0;
-
+    async function startCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         localStreamRef.current = stream;
-        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-
-        const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-        pcRef.current = pc;
-        stream.getTracks().forEach(t => pc.addTrack(t, stream));
-        pc.onicecandidate = e => { if (e.candidate) socket.emit("webrtc-ice", { candidate: e.candidate }); };
-        pc.ontrack = e => { if (remoteVideoRef.current && e.streams[0]) remoteVideoRef.current.srcObject = e.streams[0]; };
-
-        if (data.role === "caller") {
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          socket.emit("webrtc-offer", { offer });
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          localVideoRef.current.onloadedmetadata = () => setCameraReady(true);
         }
-        startRatingLoop();
+        setCameraReady(true);
       } catch (err) {
         console.error("Camera error:", err);
         setGameState("error");
         setErrorMessage("Camera permission denied or camera not found. You must allow camera access to play.");
+        return;
       }
-    });
+    }
 
-    socket.on("webrtc-offer", async (data: { offer: RTCSessionDescriptionInit }) => {
-      const pc = pcRef.current; if (!pc) return;
-      await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.emit("webrtc-answer", { answer });
-    });
+    startCamera().then(() => {
+      setGameState("queue");
+      const socket = io({ path: "/api/socket.io", transports: ["websocket"] });
+      socketRef.current = socket;
 
-    socket.on("webrtc-answer", async (data: { answer: RTCSessionDescriptionInit }) => {
-      const pc = pcRef.current; if (!pc) return;
-      await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-    });
-
-    socket.on("webrtc-ice", async (data: { candidate: RTCIceCandidateInit }) => {
-      const pc = pcRef.current; if (!pc) return;
-      try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (e) { console.error(e); }
-    });
-
-    socket.on("score-update", (data: { myScore: number; opponentScore: number; myFeedback: string }) => {
-      setMyScore(data.myScore);
-      setOpponentScore(prev => {
-        const delta = data.opponentScore - prevOpponentScoreRef.current;
-        prevOpponentScoreRef.current = data.opponentScore;
-        if (delta > 0 && delta <= 10) setOpponentLastRoundScore(delta);
-        return data.opponentScore;
+      socket.on("connect", () => {
+        if (userIdRef.current) socket.emit("identify", { userId: userIdRef.current });
+        socket.emit("join-queue");
       });
-      if (data.myFeedback) setMyFeedback(data.myFeedback);
-      setCountdown(5);
-    });
 
-    socket.on("game-over", (data: { won: boolean; finalScores: { myScore: number; opponentScore: number } }) => {
-      setGameState("game-over");
-      setWon(data.won);
-      setMyScore(data.finalScores.myScore);
-      setOpponentScore(data.finalScores.opponentScore);
-      if (ratingIntervalRef.current) clearInterval(ratingIntervalRef.current);
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-    });
+      socket.on("matched", async (data: { roomId: string; role: "caller" | "receiver"; targetScore: number }) => {
+        setGameState("matched");
+        setTargetScore(data.targetScore);
+        setMyScore(0); setOpponentScore(0);
+        setLastRoundScore(null); setOpponentLastRoundScore(null);
+        setScoreHistory([]);
+        setPartnerLeft(false); setWon(null);
+        prevOpponentScoreRef.current = 0;
 
-    socket.on("partner-left", () => {
-      setPartnerLeft(true);
-      setGameState("game-over");
-      if (ratingIntervalRef.current) clearInterval(ratingIntervalRef.current);
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-    });
+        try {
+          const stream = localStreamRef.current;
+          if (!stream) throw new Error("No camera stream");
 
-    return () => cleanup();
-  }, [cleanup]);
+          const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+          pcRef.current = pc;
+          stream.getTracks().forEach(t => pc.addTrack(t, stream));
+          pc.onicecandidate = e => { if (e.candidate) socket.emit("webrtc-ice", { candidate: e.candidate }); };
+          pc.ontrack = e => {
+            if (remoteVideoRef.current && e.streams[0]) {
+              remoteVideoRef.current.srcObject = e.streams[0];
+              remoteVideoRef.current.play().catch(console.error);
+            }
+          };
+
+          if (data.role === "caller") {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            socket.emit("webrtc-offer", { offer });
+          }
+          startRatingLoop();
+        } catch (err) {
+          console.error("WebRTC error:", err);
+          setGameState("error");
+          setErrorMessage("Failed to set up connection. Please try again.");
+        }
+      });
+
+      socket.on("webrtc-offer", async (data: { offer: RTCSessionDescriptionInit }) => {
+        const pc = pcRef.current; if (!pc) return;
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit("webrtc-answer", { answer });
+      });
+
+      socket.on("webrtc-answer", async (data: { answer: RTCSessionDescriptionInit }) => {
+        const pc = pcRef.current; if (!pc) return;
+        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+      });
+
+      socket.on("webrtc-ice", async (data: { candidate: RTCIceCandidateInit }) => {
+        const pc = pcRef.current; if (!pc) return;
+        try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (e) { console.error(e); }
+      });
+
+      socket.on("score-update", (data: { myScore: number; opponentScore: number; myFeedback: string }) => {
+        setMyScore(data.myScore);
+        setOpponentScore(prev => {
+          const delta = data.opponentScore - prevOpponentScoreRef.current;
+          prevOpponentScoreRef.current = data.opponentScore;
+          if (delta > 0 && delta <= 10) setOpponentLastRoundScore(delta);
+          return data.opponentScore;
+        });
+        if (data.myFeedback) setMyFeedback(data.myFeedback);
+        setCountdown(5);
+      });
+
+      socket.on("game-over", (data: { won: boolean; finalScores: { myScore: number; opponentScore: number } }) => {
+        setGameState("game-over");
+        setWon(data.won);
+        setMyScore(data.finalScores.myScore);
+        setOpponentScore(data.finalScores.opponentScore);
+        if (ratingIntervalRef.current) clearInterval(ratingIntervalRef.current);
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      });
+
+      socket.on("partner-left", () => {
+        setPartnerLeft(true);
+        setGameState("game-over");
+        if (ratingIntervalRef.current) clearInterval(ratingIntervalRef.current);
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      });
+    });
+  }, []);
 
   const triggerBurst = () => {
     setScanBurst(true);
@@ -356,9 +476,9 @@ function GameArena({ onRematch }: GameArenaProps) {
     }, 1000);
 
     ratingIntervalRef.current = setInterval(async () => {
-      if (!localVideoRef.current || !canvasRef.current || !socketRef.current) return;
+      if (!localVideoRef.current || !captureCanvasRef.current || !socketRef.current) return;
       const video = localVideoRef.current;
-      const canvas = canvasRef.current;
+      const canvas = captureCanvasRef.current;
       if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
       canvas.width = video.videoWidth;
@@ -396,17 +516,42 @@ function GameArena({ onRematch }: GameArenaProps) {
     );
   }
 
+  if (gameState === "idle") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (gameState === "queue") {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 gap-8">
+        <div className="relative w-64 h-48 md:w-96 md:h-72 overflow-hidden border border-border">
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover grayscale-[0.2] contrast-125"
+          />
+          {cameraReady && (
+            <PoseScanOverlay videoRef={localVideoRef} burst={false} />
+          )}
+          {!cameraReady && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+              <span className="font-mono text-xs text-primary animate-pulse">Initializing camera...</span>
+            </div>
+          )}
+        </div>
         <div className="relative">
           <div className="w-32 h-32 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="font-display text-3xl text-primary animate-pulse">VS</span>
           </div>
         </div>
-        <h2 className="mt-8 text-3xl font-display uppercase tracking-widest text-foreground">Awaiting Challenger</h2>
-        <Link href="/" className="mt-8 text-muted-foreground hover:text-destructive font-mono uppercase text-sm border-b border-transparent hover:border-destructive transition-colors pb-1">
+        <h2 className="text-3xl font-display uppercase tracking-widest text-foreground">Awaiting Challenger</h2>
+        <Link href="/" className="text-muted-foreground hover:text-destructive font-mono uppercase text-sm border-b border-transparent hover:border-destructive transition-colors pb-1">
           Back Out
         </Link>
       </div>
@@ -415,7 +560,7 @@ function GameArena({ onRematch }: GameArenaProps) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-hidden relative">
-      <canvas ref={canvasRef} className="hidden" />
+      <canvas ref={captureCanvasRef} className="hidden" />
 
       {/* Scores */}
       <header className="absolute top-0 left-0 right-0 z-20 bg-background/90 border-b border-border backdrop-blur p-4">
@@ -464,7 +609,9 @@ function GameArena({ onRematch }: GameArenaProps) {
           <video ref={localVideoRef} autoPlay playsInline muted
             className="w-full h-full object-cover grayscale-[0.2] contrast-125" />
           <div className="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] pointer-events-none" />
-          {gameState === "matched" && <PhysiqueScanOverlay burst={scanBurst} />}
+          {gameState === "matched" && cameraReady && (
+            <PoseScanOverlay videoRef={localVideoRef} burst={scanBurst} />
+          )}
           {myFeedback && (
             <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-6 py-3 font-mono text-sm sm:text-base border-2 border-background font-bold tracking-tight uppercase max-w-[90%] text-center animate-in fade-in slide-in-from-bottom-4 duration-300 z-20">
               AI: {myFeedback}
@@ -475,6 +622,11 @@ function GameArena({ onRematch }: GameArenaProps) {
           <video ref={remoteVideoRef} autoPlay playsInline
             className="w-full h-full object-cover grayscale-[0.2] contrast-125" />
           <div className="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] pointer-events-none" />
+          {!remoteVideoRef.current?.srcObject && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="font-mono text-xs text-muted-foreground animate-pulse uppercase tracking-widest">Connecting opponent...</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -515,8 +667,8 @@ function GameArena({ onRematch }: GameArenaProps) {
               >
                 Rematch
               </button>
-              <Link href="/leaderboard" className="inline-block border border-primary text-primary px-6 py-4 font-display text-xl uppercase tracking-widest hover:bg-primary/10 transition-colors">
-                Rankings
+              <Link href="/" className="border border-border px-8 py-4 font-display text-2xl uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground transition-colors">
+                Exit
               </Link>
             </div>
           </div>
@@ -527,6 +679,6 @@ function GameArena({ onRematch }: GameArenaProps) {
 }
 
 export default function Game() {
-  const [sessionKey, setSessionKey] = useState(0);
-  return <GameArena key={sessionKey} onRematch={() => setSessionKey(k => k + 1)} />;
+  const [key, setKey] = useState(0);
+  return <GameArena key={key} onRematch={() => setKey(k => k + 1)} />;
 }
