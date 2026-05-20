@@ -3,18 +3,22 @@ import { io, Socket } from "socket.io-client";
 import { Link } from "wouter";
 import { useRateFrame } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { Loader2, CameraOff, AlertTriangle, Trophy } from "lucide-react";
+import { CameraOff, AlertTriangle, Trophy } from "lucide-react";
 
 type GameState = "idle" | "queue" | "matched" | "game-over" | "error";
 
-export default function Game() {
+interface GameArenaProps {
+  onRematch: () => void;
+}
+
+function GameArena({ onRematch }: GameArenaProps) {
   const [gameState, setGameState] = useState<GameState>("idle");
   const [role, setRole] = useState<"caller" | "receiver" | null>(null);
-  
+
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
   const [targetScore, setTargetScore] = useState(50);
-  
+
   const [myFeedback, setMyFeedback] = useState<string | null>(null);
   const [won, setWon] = useState<boolean | null>(null);
   const [partnerLeft, setPartnerLeft] = useState(false);
@@ -62,13 +66,11 @@ export default function Game() {
 
   useEffect(() => {
     setGameState("queue");
-    
-    // 1. Connect Socket
+
     const socket = io({ path: "/api/socket.io", transports: ["websocket"] });
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      // Identify user so ELO can be attributed
       if (userIdRef.current) {
         socket.emit("identify", { userId: userIdRef.current });
       }
@@ -91,7 +93,6 @@ export default function Game() {
           localVideoRef.current.srcObject = stream;
         }
 
-        // Setup WebRTC
         const pc = new RTCPeerConnection({
           iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
         });
@@ -117,7 +118,6 @@ export default function Game() {
           socket.emit("webrtc-offer", { offer });
         }
 
-        // Start interval
         startRatingLoop();
 
       } catch (err) {
@@ -190,10 +190,10 @@ export default function Game() {
 
     ratingIntervalRef.current = setInterval(async () => {
       if (!localVideoRef.current || !canvasRef.current || !socketRef.current) return;
-      
+
       const video = localVideoRef.current;
       const canvas = canvasRef.current;
-      
+
       if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
       canvas.width = video.videoWidth;
@@ -213,7 +213,6 @@ export default function Game() {
       }
     }, 5000);
   };
-
 
   if (gameState === "error") {
     return (
@@ -250,7 +249,7 @@ export default function Game() {
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-hidden relative">
       <canvas ref={canvasRef} className="hidden" />
-      
+
       {/* Top Bar - Scores */}
       <header className="absolute top-0 left-0 right-0 z-20 bg-background/90 border-b border-border backdrop-blur p-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -258,13 +257,13 @@ export default function Game() {
             <span className="text-primary font-display text-xl uppercase tracking-wider">You</span>
             <div className="text-5xl md:text-7xl font-display leading-none text-foreground">{myScore}</div>
             <div className="w-full bg-secondary h-2 mt-2 relative overflow-hidden">
-              <div 
+              <div
                 className="absolute top-0 left-0 bottom-0 bg-primary transition-all duration-500 ease-out"
                 style={{ width: `${Math.min(100, (myScore / targetScore) * 100)}%` }}
               />
             </div>
           </div>
-          
+
           <div className="flex-shrink-0 px-8 text-center flex flex-col items-center">
             <span className="text-muted-foreground font-mono text-xs uppercase mb-1">Target</span>
             <div className="text-3xl font-display text-muted-foreground">{targetScore}</div>
@@ -273,7 +272,7 @@ export default function Game() {
               <svg className="absolute inset-0 w-full h-full -rotate-90">
                 <circle cx="22" cy="22" r="22" fill="none" stroke="currentColor" strokeWidth="2" strokeOpacity="0.2" />
                 <circle cx="22" cy="22" r="22" fill="none" stroke="currentColor" strokeWidth="2"
-                  strokeDasharray="138" strokeDashoffset={138 - (138 * countdown) / 5} 
+                  strokeDasharray="138" strokeDashoffset={138 - (138 * countdown) / 5}
                   className="transition-all duration-1000 linear" />
               </svg>
             </div>
@@ -283,7 +282,7 @@ export default function Game() {
             <span className="text-destructive font-display text-xl uppercase tracking-wider">Opponent</span>
             <div className="text-5xl md:text-7xl font-display leading-none text-foreground">{opponentScore}</div>
             <div className="w-full bg-secondary h-2 mt-2 relative overflow-hidden flex justify-end">
-              <div 
+              <div
                 className="absolute top-0 right-0 bottom-0 bg-destructive transition-all duration-500 ease-out"
                 style={{ width: `${Math.min(100, (opponentScore / targetScore) * 100)}%` }}
               />
@@ -295,27 +294,27 @@ export default function Game() {
       {/* Videos */}
       <div className="flex-1 flex flex-col md:flex-row relative pt-32 pb-4">
         <div className="flex-1 relative border-r border-border md:border-r-4 md:border-background">
-          <video 
-            ref={localVideoRef} 
-            autoPlay 
-            playsInline 
-            muted 
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            muted
             className="w-full h-full object-cover grayscale-[0.2] contrast-125"
           />
           <div className="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] pointer-events-none" />
-          
+
           {myFeedback && (
             <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-6 py-3 font-mono text-sm sm:text-base border-2 border-background font-bold tracking-tight uppercase max-w-[90%] text-center animate-in fade-in slide-in-from-bottom-4 duration-300">
               AI: {myFeedback}
             </div>
           )}
         </div>
-        
+
         <div className="flex-1 relative">
-          <video 
-            ref={remoteVideoRef} 
-            autoPlay 
-            playsInline 
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
             className="w-full h-full object-cover grayscale-[0.2] contrast-125"
           />
           <div className="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] pointer-events-none" />
@@ -348,11 +347,14 @@ export default function Game() {
                 </p>
               </>
             )}
-            
+
             <div className="flex items-center justify-center gap-4">
-              <Link href="/game" className="inline-block bg-primary text-primary-foreground px-8 py-4 font-display text-2xl uppercase tracking-widest hover:bg-primary/90 transition-colors">
+              <button
+                onClick={() => { cleanup(); onRematch(); }}
+                className="bg-primary text-primary-foreground px-8 py-4 font-display text-2xl uppercase tracking-widest hover:bg-primary/90 transition-colors"
+              >
                 Rematch
-              </Link>
+              </button>
               <Link href="/leaderboard" className="inline-block border border-primary text-primary px-6 py-4 font-display text-xl uppercase tracking-widest hover:bg-primary/10 transition-colors">
                 Rankings
               </Link>
@@ -362,4 +364,9 @@ export default function Game() {
       )}
     </div>
   );
+}
+
+export default function Game() {
+  const [sessionKey, setSessionKey] = useState(0);
+  return <GameArena key={sessionKey} onRematch={() => setSessionKey(k => k + 1)} />;
 }
