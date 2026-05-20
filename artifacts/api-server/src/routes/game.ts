@@ -88,7 +88,7 @@ SCORING DISCIPLINE:
               type: "image_url",
               image_url: {
                 url: `data:image/jpeg;base64,${imageData}`,
-                detail: "low",
+                detail: "auto",
               },
             },
           ],

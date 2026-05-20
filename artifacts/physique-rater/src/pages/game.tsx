@@ -20,37 +20,20 @@ const TIER_MAP: Record<number, { label: string; color: string }> = {
   10: { label: "PEAK PHYSIQUE",    color: "#aa44ff" },
 };
 
-// Body keypoints as [x%, y%] — mapped to a standing person in frame
+interface RoundResult {
+  score: number;
+  feedback: string;
+}
+
 const NODES: [number, number][] = [
-  [50, 7],   // 0  head top
-  [50, 13],  // 1  head center
-  [50, 20],  // 2  neck
-  [32, 28],  // 3  left shoulder
-  [68, 28],  // 4  right shoulder
-  [50, 36],  // 5  sternum
-  [22, 46],  // 6  left elbow
-  [78, 46],  // 7  right elbow
-  [16, 60],  // 8  left wrist
-  [84, 60],  // 9  right wrist
-  [38, 62],  // 10 left hip
-  [62, 62],  // 11 right hip
-  [36, 79],  // 12 left knee
-  [64, 79],  // 13 right knee
-  [34, 96],  // 14 left ankle
-  [66, 96],  // 15 right ankle
+  [50, 7],[50, 13],[50, 20],[32, 28],[68, 28],[50, 36],
+  [22, 46],[78, 46],[16, 60],[84, 60],[38, 62],[62, 62],
+  [36, 79],[64, 79],[34, 96],[66, 96],
 ];
 
 const EDGES: [number, number][] = [
-  [0, 1], [1, 2],             // head
-  [2, 3], [2, 4],             // neck → shoulders
-  [3, 5], [4, 5],             // shoulders → sternum
-  [3, 6], [6, 8],             // left arm
-  [4, 7], [7, 9],             // right arm
-  [5, 10], [5, 11],           // sternum → hips
-  [3, 10], [4, 11],           // shoulder → hip (torso sides)
-  [10, 11],                   // hip bar
-  [10, 12], [12, 14],         // left leg
-  [11, 13], [13, 15],         // right leg
+  [0,1],[1,2],[2,3],[2,4],[3,5],[4,5],[3,6],[6,8],[4,7],[7,9],
+  [5,10],[5,11],[3,10],[4,11],[10,11],[10,12],[12,14],[11,13],[13,15],
 ];
 
 function PhysiqueScanOverlay({ burst }: { burst: boolean }) {
@@ -73,9 +56,7 @@ function PhysiqueScanOverlay({ burst }: { burst: boolean }) {
           60%  { r: 5; opacity: 1; }
           100% { r: 3; opacity: 0.7; }
         }
-        @keyframes edge-march {
-          to { stroke-dashoffset: -24; }
-        }
+        @keyframes edge-march { to { stroke-dashoffset: -24; } }
         @keyframes edge-burst {
           0%   { opacity: 0.35; stroke-width: 1; }
           20%  { opacity: 1;    stroke-width: 2; }
@@ -86,13 +67,9 @@ function PhysiqueScanOverlay({ burst }: { burst: boolean }) {
           50%       { opacity: 1; }
         }
       `}</style>
-
-      <svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="xMidYMid meet"
+      <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"
         className="absolute inset-0 w-full h-full pointer-events-none z-10"
-        style={{ mixBlendMode: "screen" }}
-      >
+        style={{ mixBlendMode: "screen" }}>
         <defs>
           <filter id="glow-green">
             <feGaussianBlur stdDeviation="1.2" result="blur" />
@@ -102,59 +79,6 @@ function PhysiqueScanOverlay({ burst }: { burst: boolean }) {
             <feGaussianBlur stdDeviation="2.5" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
-        </defs>
-
-        {/* Skeleton edges */}
-        {EDGES.map(([a, b], i) => {
-          const [x1, y1] = NODES[a];
-          const [x2, y2] = NODES[b];
-          return (
-            <line
-              key={i}
-              x1={x1} y1={y1} x2={x2} y2={y2}
-              stroke={burst ? "#ffffff" : "#00ff88"}
-              strokeOpacity={burst ? 0.9 : 0.35}
-              strokeWidth={burst ? 1.5 : 1}
-              filter={burst ? "url(#glow-burst)" : "url(#glow-green)"}
-              strokeDasharray="6 3"
-              style={{
-                animation: burst
-                  ? `edge-burst 1.4s ease-out forwards`
-                  : `edge-march 1.2s linear infinite`,
-                animationDelay: burst ? `${i * 0.03}s` : `${i * 0.05}s`,
-              }}
-            />
-          );
-        })}
-
-        {/* Skeleton nodes */}
-        {NODES.map(([x, y], i) => (
-          <circle
-            key={i}
-            cx={x} cy={y}
-            r={3}
-            fill={burst ? "#ffffff" : "#00ff88"}
-            filter={burst ? "url(#glow-burst)" : "url(#glow-green)"}
-            style={{
-              animation: burst
-                ? `node-burst 1.4s ease-out forwards`
-                : `node-pulse 2s ease-in-out infinite`,
-              animationDelay: burst ? `${i * 0.04}s` : `${(i * 137) % 2000}ms`,
-            }}
-          />
-        ))}
-
-        {/* Scanning sweep line */}
-        {!burst && (
-          <rect
-            x="0" y="0"
-            width="100" height="1.5"
-            fill="url(#scanGrad)"
-            style={{ animation: "scan-sweep 3s ease-in-out infinite" }}
-          />
-        )}
-
-        <defs>
           <linearGradient id="scanGrad" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%"   stopColor="#00ff88" stopOpacity="0" />
             <stop offset="40%"  stopColor="#00ff88" stopOpacity="0.6" />
@@ -164,12 +88,41 @@ function PhysiqueScanOverlay({ burst }: { burst: boolean }) {
           </linearGradient>
         </defs>
 
-        {/* Corner brackets */}
+        {EDGES.map(([a, b], i) => {
+          const [x1, y1] = NODES[a];
+          const [x2, y2] = NODES[b];
+          return (
+            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+              stroke={burst ? "#ffffff" : "#00ff88"}
+              strokeOpacity={burst ? 0.9 : 0.35}
+              strokeWidth={burst ? 1.5 : 1}
+              filter={burst ? "url(#glow-burst)" : "url(#glow-green)"}
+              strokeDasharray="6 3"
+              style={{
+                animation: burst ? `edge-burst 1.4s ease-out forwards` : `edge-march 1.2s linear infinite`,
+                animationDelay: burst ? `${i * 0.03}s` : `${i * 0.05}s`,
+              }} />
+          );
+        })}
+
+        {NODES.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={3}
+            fill={burst ? "#ffffff" : "#00ff88"}
+            filter={burst ? "url(#glow-burst)" : "url(#glow-green)"}
+            style={{
+              animation: burst ? `node-burst 1.4s ease-out forwards` : `node-pulse 2s ease-in-out infinite`,
+              animationDelay: burst ? `${i * 0.04}s` : `${(i * 137) % 2000}ms`,
+            }} />
+        ))}
+
+        {!burst && (
+          <rect x="0" y="0" width="100" height="1.5" fill="url(#scanGrad)"
+            style={{ animation: "scan-sweep 3s ease-in-out infinite" }} />
+        )}
+
         {[
-          { x: 2, y: 2, rx: 1, ry: 1 },
-          { x: 98, y: 2, rx: -1, ry: 1 },
-          { x: 2, y: 98, rx: 1, ry: -1 },
-          { x: 98, y: 98, rx: -1, ry: -1 },
+          { x: 2, y: 2, rx: 1, ry: 1 }, { x: 98, y: 2, rx: -1, ry: 1 },
+          { x: 2, y: 98, rx: 1, ry: -1 }, { x: 98, y: 98, rx: -1, ry: -1 },
         ].map((c, i) => (
           <g key={i} stroke={burst ? "#ffffff" : "#00ff88"} strokeWidth="0.8" fill="none"
             opacity={burst ? 1 : 0.7} filter="url(#glow-green)">
@@ -178,19 +131,67 @@ function PhysiqueScanOverlay({ burst }: { burst: boolean }) {
           </g>
         ))}
 
-        {/* Status label */}
-        <text
-          x="50" y="99"
-          textAnchor="middle"
-          fontSize="2.5"
-          fill={burst ? "#ffffff" : "#00ff88"}
-          fontFamily="monospace"
-          style={{ animation: "scan-label-blink 1s ease-in-out infinite" }}
-        >
+        <text x="50" y="99" textAnchor="middle" fontSize="2.5"
+          fill={burst ? "#ffffff" : "#00ff88"} fontFamily="monospace"
+          style={{ animation: "scan-label-blink 1s ease-in-out infinite" }}>
           {burst ? "ANALYZING..." : "SCANNING"}
         </text>
       </svg>
     </>
+  );
+}
+
+function TierBadge({ score }: { score: number | null }) {
+  if (!score || !TIER_MAP[score]) return null;
+  const tier = TIER_MAP[score];
+  return (
+    <div className="mt-1 font-mono text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm w-fit"
+      style={{
+        color: tier.color,
+        border: `1px solid ${tier.color}44`,
+        background: `${tier.color}18`,
+        textShadow: `0 0 8px ${tier.color}99`,
+      }}>
+      {tier.label}
+    </div>
+  );
+}
+
+function ScoreBreakdown({ history }: { history: RoundResult[] }) {
+  if (history.length === 0) return null;
+  const avg = Math.round(history.reduce((s, r) => s + r.score, 0) / history.length);
+  const lastFeedback = history[history.length - 1]?.feedback;
+  const dots = history.slice(-10);
+
+  return (
+    <div className="mt-4 border border-border bg-secondary/30 p-4 text-left space-y-3">
+      <div className="flex items-center gap-3">
+        <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest">Avg Score</span>
+        <span className="font-display text-2xl" style={{ color: TIER_MAP[avg]?.color ?? "#fff" }}>{avg}/10</span>
+        <TierBadge score={avg} />
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest mr-1">Rounds</span>
+        {dots.map((r, i) => (
+          <div key={i} title={`Round ${history.length - dots.length + i + 1}: ${r.score}/10`}
+            className="w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-mono font-bold"
+            style={{
+              background: `${TIER_MAP[r.score]?.color ?? "#888"}33`,
+              border: `1px solid ${TIER_MAP[r.score]?.color ?? "#888"}`,
+              color: TIER_MAP[r.score]?.color ?? "#888",
+            }}>
+            {r.score}
+          </div>
+        ))}
+      </div>
+
+      {lastFeedback && (
+        <p className="font-mono text-xs text-muted-foreground italic leading-relaxed">
+          "{lastFeedback}"
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -204,11 +205,16 @@ function GameArena({ onRematch }: GameArenaProps) {
   const [opponentScore, setOpponentScore] = useState(0);
   const [targetScore, setTargetScore] = useState(50);
   const [myFeedback, setMyFeedback] = useState<string | null>(null);
+  const [lastRoundScore, setLastRoundScore] = useState<number | null>(null);
+  const [opponentLastRoundScore, setOpponentLastRoundScore] = useState<number | null>(null);
+  const [scoreHistory, setScoreHistory] = useState<RoundResult[]>([]);
   const [won, setWon] = useState<boolean | null>(null);
   const [partnerLeft, setPartnerLeft] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(5);
   const [scanBurst, setScanBurst] = useState(false);
+
+  const prevOpponentScoreRef = useRef(0);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -256,7 +262,10 @@ function GameArena({ onRematch }: GameArenaProps) {
       setGameState("matched");
       setTargetScore(data.targetScore);
       setMyScore(0); setOpponentScore(0);
+      setLastRoundScore(null); setOpponentLastRoundScore(null);
+      setScoreHistory([]);
       setPartnerLeft(false); setWon(null);
+      prevOpponentScoreRef.current = 0;
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -302,7 +311,12 @@ function GameArena({ onRematch }: GameArenaProps) {
 
     socket.on("score-update", (data: { myScore: number; opponentScore: number; myFeedback: string }) => {
       setMyScore(data.myScore);
-      setOpponentScore(data.opponentScore);
+      setOpponentScore(prev => {
+        const delta = data.opponentScore - prevOpponentScoreRef.current;
+        prevOpponentScoreRef.current = data.opponentScore;
+        if (delta > 0 && delta <= 10) setOpponentLastRoundScore(delta);
+        return data.opponentScore;
+      });
       if (data.myFeedback) setMyFeedback(data.myFeedback);
       setCountdown(5);
     });
@@ -352,12 +366,14 @@ function GameArena({ onRematch }: GameArenaProps) {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const base64Data = canvas.toDataURL("image/jpeg", 0.5).split(",")[1];
+      const base64Data = canvas.toDataURL("image/jpeg", 0.7).split(",")[1];
 
       triggerBurst();
 
       try {
         const result = await rateFrameMutateRef.current({ data: { imageData: base64Data } });
+        setLastRoundScore(result.score);
+        setScoreHistory(prev => [...prev, { score: result.score, feedback: result.feedback }]);
         socketRef.current.emit("score-update", { score: result.score, feedback: result.feedback });
       } catch (err) {
         console.error("Failed to rate frame", err);
@@ -407,19 +423,7 @@ function GameArena({ onRematch }: GameArenaProps) {
           <div className="flex-1 flex flex-col">
             <span className="text-primary font-display text-xl uppercase tracking-wider">You</span>
             <div className="text-5xl md:text-7xl font-display leading-none text-foreground">{myScore}</div>
-            {myScore > 0 && TIER_MAP[myScore] && (
-              <div
-                className="mt-1 font-mono text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm w-fit"
-                style={{
-                  color: TIER_MAP[myScore].color,
-                  border: `1px solid ${TIER_MAP[myScore].color}44`,
-                  background: `${TIER_MAP[myScore].color}18`,
-                  textShadow: `0 0 8px ${TIER_MAP[myScore].color}99`,
-                }}
-              >
-                {TIER_MAP[myScore].label}
-              </div>
-            )}
+            <TierBadge score={lastRoundScore} />
             <div className="w-full bg-secondary h-2 mt-2 relative overflow-hidden">
               <div className="absolute top-0 left-0 bottom-0 bg-primary transition-all duration-500 ease-out"
                 style={{ width: `${Math.min(100, (myScore / targetScore) * 100)}%` }} />
@@ -443,19 +447,9 @@ function GameArena({ onRematch }: GameArenaProps) {
           <div className="flex-1 flex flex-col items-end">
             <span className="text-destructive font-display text-xl uppercase tracking-wider">Opponent</span>
             <div className="text-5xl md:text-7xl font-display leading-none text-foreground">{opponentScore}</div>
-            {opponentScore > 0 && TIER_MAP[opponentScore] && (
-              <div
-                className="mt-1 font-mono text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm w-fit"
-                style={{
-                  color: TIER_MAP[opponentScore].color,
-                  border: `1px solid ${TIER_MAP[opponentScore].color}44`,
-                  background: `${TIER_MAP[opponentScore].color}18`,
-                  textShadow: `0 0 8px ${TIER_MAP[opponentScore].color}99`,
-                }}
-              >
-                {TIER_MAP[opponentScore].label}
-              </div>
-            )}
+            <div className="flex justify-end">
+              <TierBadge score={opponentLastRoundScore} />
+            </div>
             <div className="w-full bg-secondary h-2 mt-2 relative overflow-hidden flex justify-end">
               <div className="absolute top-0 right-0 bottom-0 bg-destructive transition-all duration-500 ease-out"
                 style={{ width: `${Math.min(100, (opponentScore / targetScore) * 100)}%` }} />
@@ -466,7 +460,6 @@ function GameArena({ onRematch }: GameArenaProps) {
 
       {/* Videos */}
       <div className="flex-1 flex flex-col md:flex-row relative pt-32 pb-4">
-        {/* Local video with scan overlay */}
         <div className="flex-1 relative border-r border-border md:border-r-4 md:border-background overflow-hidden">
           <video ref={localVideoRef} autoPlay playsInline muted
             className="w-full h-full object-cover grayscale-[0.2] contrast-125" />
@@ -478,8 +471,6 @@ function GameArena({ onRematch }: GameArenaProps) {
             </div>
           )}
         </div>
-
-        {/* Remote video */}
         <div className="flex-1 relative">
           <video ref={remoteVideoRef} autoPlay playsInline
             className="w-full h-full object-cover grayscale-[0.2] contrast-125" />
@@ -489,34 +480,35 @@ function GameArena({ onRematch }: GameArenaProps) {
 
       {/* Game Over Overlay */}
       {gameState === "game-over" && (
-        <div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in zoom-in duration-500">
+        <div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in zoom-in duration-500 overflow-y-auto">
           <div className="max-w-xl w-full bg-card border border-border p-8 text-center shadow-2xl">
             {partnerLeft ? (
               <>
-                <AlertTriangle className="w-16 h-16 text-primary mx-auto mb-6" />
-                <h2 className="text-5xl font-display uppercase text-foreground mb-4">Rage Quit</h2>
-                <p className="text-muted-foreground font-mono mb-8">Opponent disconnected from the arena.</p>
+                <AlertTriangle className="w-16 h-16 text-primary mx-auto mb-4" />
+                <h2 className="text-5xl font-display uppercase text-foreground mb-2">Rage Quit</h2>
+                <p className="text-muted-foreground font-mono mb-6">Opponent disconnected from the arena.</p>
               </>
             ) : (
               <>
                 {won
-                  ? <Trophy className="w-16 h-16 text-primary mx-auto mb-6" />
-                  : <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center text-4xl font-display text-destructive border-4 border-destructive rounded-full">X</div>
+                  ? <Trophy className="w-16 h-16 text-primary mx-auto mb-4" />
+                  : <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center text-4xl font-display text-destructive border-4 border-destructive rounded-full">X</div>
                 }
                 <h2 className={`text-6xl font-display uppercase mb-2 ${won ? 'text-primary' : 'text-destructive'}`}>
                   {won ? 'Victory' : 'Defeat'}
                 </h2>
-                <div className="flex items-center justify-center gap-6 font-display text-4xl mb-4">
+                <div className="flex items-center justify-center gap-6 font-display text-4xl mb-1">
                   <div className="text-primary">{myScore}</div>
                   <div className="text-muted-foreground text-2xl">-</div>
                   <div className="text-destructive">{opponentScore}</div>
                 </div>
-                <p className="font-mono text-xs text-muted-foreground mb-8">
+                <p className="font-mono text-xs text-muted-foreground mb-4">
                   {won ? "ELO gained! Check the leaderboard." : "ELO adjusted. Come back stronger."}
                 </p>
+                <ScoreBreakdown history={scoreHistory} />
               </>
             )}
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center justify-center gap-4 mt-6">
               <button
                 onClick={() => { cleanup(); onRematch(); }}
                 className="bg-primary text-primary-foreground px-8 py-4 font-display text-2xl uppercase tracking-widest hover:bg-primary/90 transition-colors"
