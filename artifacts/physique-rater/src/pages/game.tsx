@@ -7,6 +7,19 @@ import { CameraOff, AlertTriangle, Trophy } from "lucide-react";
 
 type GameState = "idle" | "queue" | "matched" | "game-over" | "error";
 
+const TIER_MAP: Record<number, { label: string; color: string }> = {
+  1:  { label: "VERY OVERWEIGHT",  color: "#ff2222" },
+  2:  { label: "OVERWEIGHT",       color: "#ff5500" },
+  3:  { label: "FAT",              color: "#ff8800" },
+  4:  { label: "BELOW AVERAGE",    color: "#ffaa00" },
+  5:  { label: "AVERAGE",          color: "#ffdd00" },
+  6:  { label: "ABOVE AVERAGE",    color: "#aadd00" },
+  7:  { label: "FIT",              color: "#66cc00" },
+  8:  { label: "VERY FIT",         color: "#00cc66" },
+  9:  { label: "EXTREMELY FIT",    color: "#00bbff" },
+  10: { label: "PEAK PHYSIQUE",    color: "#aa44ff" },
+};
+
 // Body keypoints as [x%, y%] — mapped to a standing person in frame
 const NODES: [number, number][] = [
   [50, 7],   // 0  head top
@@ -394,6 +407,19 @@ function GameArena({ onRematch }: GameArenaProps) {
           <div className="flex-1 flex flex-col">
             <span className="text-primary font-display text-xl uppercase tracking-wider">You</span>
             <div className="text-5xl md:text-7xl font-display leading-none text-foreground">{myScore}</div>
+            {myScore > 0 && TIER_MAP[myScore] && (
+              <div
+                className="mt-1 font-mono text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm w-fit"
+                style={{
+                  color: TIER_MAP[myScore].color,
+                  border: `1px solid ${TIER_MAP[myScore].color}44`,
+                  background: `${TIER_MAP[myScore].color}18`,
+                  textShadow: `0 0 8px ${TIER_MAP[myScore].color}99`,
+                }}
+              >
+                {TIER_MAP[myScore].label}
+              </div>
+            )}
             <div className="w-full bg-secondary h-2 mt-2 relative overflow-hidden">
               <div className="absolute top-0 left-0 bottom-0 bg-primary transition-all duration-500 ease-out"
                 style={{ width: `${Math.min(100, (myScore / targetScore) * 100)}%` }} />
@@ -417,6 +443,19 @@ function GameArena({ onRematch }: GameArenaProps) {
           <div className="flex-1 flex flex-col items-end">
             <span className="text-destructive font-display text-xl uppercase tracking-wider">Opponent</span>
             <div className="text-5xl md:text-7xl font-display leading-none text-foreground">{opponentScore}</div>
+            {opponentScore > 0 && TIER_MAP[opponentScore] && (
+              <div
+                className="mt-1 font-mono text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm w-fit"
+                style={{
+                  color: TIER_MAP[opponentScore].color,
+                  border: `1px solid ${TIER_MAP[opponentScore].color}44`,
+                  background: `${TIER_MAP[opponentScore].color}18`,
+                  textShadow: `0 0 8px ${TIER_MAP[opponentScore].color}99`,
+                }}
+              >
+                {TIER_MAP[opponentScore].label}
+              </div>
+            )}
             <div className="w-full bg-secondary h-2 mt-2 relative overflow-hidden flex justify-end">
               <div className="absolute top-0 right-0 bottom-0 bg-destructive transition-all duration-500 ease-out"
                 style={{ width: `${Math.min(100, (opponentScore / targetScore) * 100)}%` }} />
