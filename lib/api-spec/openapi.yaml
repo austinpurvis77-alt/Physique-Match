@@ -3,20 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: PhysicRank API — AI physique rating video chat game
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: game
+    description: Game operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +25,76 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /rate-frame:
+    post:
+      operationId: rateFrame
+      tags: [game]
+      summary: Submit a video frame for AI physique rating
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FrameRatingInput"
+      responses:
+        "200":
+          description: Physique score from AI
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameRatingResult"
+        "400":
+          description: Invalid input
+
+  /game/stats:
+    get:
+      operationId: getGameStats
+      tags: [game]
+      summary: Get live platform stats
+      responses:
+        "200":
+          description: Platform stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameStats"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    FrameRatingInput:
+      type: object
+      required: [imageData]
+      properties:
+        imageData:
+          type: string
+          description: Base64-encoded JPEG image frame from user camera
+
+    FrameRatingResult:
+      type: object
+      required: [score, feedback]
+      properties:
+        score:
+          type: number
+          minimum: 1
+          maximum: 10
+          description: Physique score from 1 to 10
+        feedback:
+          type: string
+          description: Brief AI feedback on the physique
+
+    GameStats:
+      type: object
+      required: [playersOnline, activeGames]
+      properties:
+        playersOnline:
+          type: integer
+        activeGames:
+          type: integer
