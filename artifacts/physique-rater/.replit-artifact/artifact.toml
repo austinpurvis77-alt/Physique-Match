@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "PhysicRank"
+title = "OMEGAINS"
 version = "1.0.0"
 id = "artifacts/physique-rater"
 router = "path"

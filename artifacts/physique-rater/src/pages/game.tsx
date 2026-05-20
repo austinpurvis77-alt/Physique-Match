@@ -232,7 +232,7 @@ export default function Game() {
         </div>
         <h2 className="mt-8 text-3xl font-display uppercase tracking-widest text-foreground">Awaiting Challenger</h2>
         <Link href="/" className="mt-8 text-muted-foreground hover:text-destructive font-mono uppercase text-sm border-b border-transparent hover:border-destructive transition-colors pb-1">
-          Flee Arena
+          Back Out
         </Link>
       </div>
     );
@@ -320,7 +320,7 @@ export default function Game() {
             {partnerLeft ? (
               <>
                 <AlertTriangle className="w-16 h-16 text-primary mx-auto mb-6" />
-                <h2 className="text-5xl font-display uppercase text-foreground mb-4">Coward Fled</h2>
+                <h2 className="text-5xl font-display uppercase text-foreground mb-4">Rage Quit</h2>
                 <p className="text-muted-foreground font-mono mb-8">Opponent disconnected from the arena.</p>
               </>
             ) : (
@@ -338,7 +338,7 @@ export default function Game() {
             )}
             
             <Link href="/" className="inline-block bg-primary text-primary-foreground px-8 py-4 font-display text-2xl uppercase tracking-widest hover:bg-primary/90 transition-colors">
-              Return to Lobby
+              Re-Enter Arena
             </Link>
           </div>
         </div>

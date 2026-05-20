@@ -39,14 +39,14 @@ export default function Queue() {
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-4xl font-display uppercase tracking-widest text-foreground">Seeking Opponent</h2>
+          <h2 className="text-4xl font-display uppercase tracking-widest text-foreground">Matching Opponent</h2>
           <p className="text-muted-foreground font-mono">
             {stats?.playersOnline ? `${stats.playersOnline} fighters currently online` : "Connecting to arena network..."}
           </p>
         </div>
 
         <Link href="/" className="inline-block border-b-2 border-transparent hover:border-destructive text-destructive font-mono text-sm uppercase tracking-widest pb-1 transition-colors">
-          Cancel Matchmaking
+          Leave Queue
         </Link>
       </div>
     </div>

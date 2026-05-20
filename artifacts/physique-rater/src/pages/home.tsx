@@ -17,15 +17,17 @@ export default function Home() {
         
         {/* Brand Hero */}
         <div className="space-y-4">
-          <div className="inline-block px-4 py-1.5 border-2 border-primary/50 text-primary text-sm font-mono font-bold tracking-widest bg-primary/10 uppercase mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            Live AI Physique Rating Arena
-          </div>
-          <h1 className="text-7xl md:text-9xl font-display text-foreground leading-[0.8] tracking-tight uppercase shadow-sm">
-            Physic<span className="text-primary">Rank</span>
-          </h1>
+          <img
+            src="/logo.png"
+            alt="OMEGAINS"
+            className="w-48 md:w-64 h-auto mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500"
+          />
           <p className="text-lg md:text-xl text-muted-foreground font-mono max-w-2xl mx-auto pt-4 leading-relaxed">
             Face off against strangers in real-time. Every 5 seconds, AI judges your physique. First to 50 points takes the glory. No filters. Pure aesthetic warfare.
           </p>
+          <div className="font-mono text-primary text-sm tracking-[0.3em] uppercase animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200 fill-mode-both">
+            Mog. Flex. Win.
+          </div>
         </div>
 
         {/* Live Stats */}
