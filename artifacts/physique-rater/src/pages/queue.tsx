@@ -7,45 +7,42 @@ export default function Queue() {
   const { data: stats } = useGetGameStats();
 
   useEffect(() => {
-    // In a real implementation this might wait for a socket event in the queue, 
-    // but since the game component handles the socket join-queue itself according to the prompt,
-    // we actually just redirect to /game immediately or let /game handle the queue.
-    // The instructions say:
-    // /queue - Waiting for opponent
-    // /game - Main game screen.
-    // "1. On mount, emit join-queue to socket" (in Game Screen)
-    // Wait, if Game screen emits join-queue, then the queue logic is in Game Screen or Queue?
-    // Let's redirect to /game after a brief delay so /game can mount and do join-queue,
-    // OR we put the join-queue logic in /queue and redirect on match. 
-    // The prompt says "The game screen is the heart of the app. It must be built as a self-contained component that manages all game state. Here's the complete logic: 1. On mount, emit join-queue to socket... 2. Listen for matched event..."
-    // Okay, so /game handles the queue internally.
-    // That means /queue might just be a visual pass-through, or /game is where they actually wait.
-    // I will auto-redirect to /game so /game mounts and handles the real socket connection.
     const timer = setTimeout(() => {
       setLocation("/game");
-    }, 1500);
+    }, 2500);
     return () => clearTimeout(timer);
   }, [setLocation]);
 
   return (
-    <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-6">
-      <div className="text-center space-y-8">
-        
+    <div className="min-h-screen w-full bg-black flex flex-col items-center justify-center relative overflow-hidden scanlines">
+      {/* Radial glow */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,hsl(270,85%,20%),transparent)]" />
+      </div>
+      <div className="absolute inset-0 vignette z-10 pointer-events-none" />
+
+      <div className="z-20 text-center space-y-10">
+        {/* Spinner */}
         <div className="relative inline-block">
-          <div className="w-32 h-32 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center font-display text-4xl text-primary animate-pulse">
-            VS
+          <div className="w-36 h-36 border-[3px] border-primary/15 border-t-primary rounded-full animate-spin" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="font-display text-5xl text-primary glow-text">VS</span>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <h2 className="text-4xl font-display uppercase tracking-widest text-foreground">Matching Opponent</h2>
-          <p className="text-muted-foreground font-mono">
-            {stats?.playersOnline ? `${stats.playersOnline} fighters currently online` : "Connecting to arena network..."}
+        <div className="space-y-3">
+          <h2 className="text-5xl md:text-6xl font-display uppercase tracking-[0.15em] text-foreground glow-text">
+            Matching Opponent
+          </h2>
+          <p className="text-muted-foreground font-mono tracking-wide">
+            {stats?.playersOnline ? `${stats.playersOnline} fighters in the arena` : "Connecting to arena network..."}
           </p>
         </div>
 
-        <Link href="/" className="inline-block border-b-2 border-transparent hover:border-destructive text-destructive font-mono text-sm uppercase tracking-widest pb-1 transition-colors">
+        <Link
+          href="/"
+          className="inline-block text-muted-foreground hover:text-destructive font-mono uppercase text-sm tracking-[0.2em] border-b border-transparent hover:border-destructive transition-colors pb-1"
+        >
           Leave Queue
         </Link>
       </div>
