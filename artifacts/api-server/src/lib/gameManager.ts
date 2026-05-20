@@ -1,4 +1,6 @@
 import type { Server, Socket } from "socket.io";
+import { db, usersTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
 import { logger } from "./logger";
 
 export const TARGET_SCORE = 50;
@@ -6,6 +8,7 @@ export const RATING_INTERVAL_MS = 5000;
 
 export interface Player {
   socketId: string;
+  userId: string | null;
   score: number;
   lastRatedAt: number;
 }
@@ -21,9 +24,22 @@ const queue: Socket[] = [];
 const rooms = new Map<string, Room>();
 const playerRoom = new Map<string, string>();
 
+const socketUserMap = new Map<string, string>();
+
+export function registerUserSocket(socketId: string, userId: string) {
+  socketUserMap.set(socketId, userId);
+}
+
 export function setupGameManager(io: Server) {
   io.on("connection", (socket: Socket) => {
     logger.info({ socketId: socket.id }, "Client connected");
+
+    socket.on("identify", (data: { userId: string }) => {
+      if (data?.userId) {
+        socketUserMap.set(socket.id, data.userId);
+        logger.info({ socketId: socket.id, userId: data.userId }, "User identified");
+      }
+    });
 
     socket.on("join-queue", () => {
       if (playerRoom.has(socket.id)) {
@@ -105,6 +121,7 @@ export function setupGameManager(io: Server) {
       const winner = room.players.find((p) => p.score >= TARGET_SCORE);
       if (winner) {
         room.finished = true;
+        const loser = room.players.find((p) => p.socketId !== winner.socketId)!;
         room.players.forEach((p) => {
           io.to(p.socketId).emit("game-over", {
             won: p.socketId === winner.socketId,
@@ -114,6 +131,11 @@ export function setupGameManager(io: Server) {
             },
           });
         });
+
+        updateElo(winner, loser).catch((err) =>
+          logger.error({ err }, "Failed to update ELO"),
+        );
+
         cleanupRoom(roomId);
         logger.info({ roomId, winnerId: winner.socketId }, "Game over");
       }
@@ -128,8 +150,57 @@ export function setupGameManager(io: Server) {
       const idx = queue.findIndex((s) => s.id === socket.id);
       if (idx !== -1) queue.splice(idx, 1);
       handleDisconnect(io, socket);
+      socketUserMap.delete(socket.id);
     });
   });
+}
+
+function calcExpected(ratingA: number, ratingB: number): number {
+  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+}
+
+function newRating(rating: number, expected: number, actual: number, k = 32): number {
+  return Math.round(rating + k * (actual - expected));
+}
+
+async function updateElo(winner: Player, loser: Player): Promise<void> {
+  const winnerId = winner.userId;
+  const loserId = loser.userId;
+
+  const userIds = [winnerId, loserId].filter((id): id is string => !!id);
+  if (userIds.length === 0) return;
+
+  const fetchUser = async (id: string) => {
+    const [u] = await db.select({ eloRating: usersTable.eloRating }).from(usersTable).where(eq(usersTable.id, id));
+    return u?.eloRating ?? 1000;
+  };
+
+  if (winnerId && loserId) {
+    const [winnerElo, loserElo] = await Promise.all([fetchUser(winnerId), fetchUser(loserId)]);
+    const expectedWin = calcExpected(winnerElo, loserElo);
+    const expectedLoss = calcExpected(loserElo, winnerElo);
+    const newWinnerElo = newRating(winnerElo, expectedWin, 1);
+    const newLoserElo = newRating(loserElo, expectedLoss, 0);
+
+    await Promise.all([
+      db.update(usersTable)
+        .set({ eloRating: newWinnerElo, wins: sql`${usersTable.wins} + 1`, updatedAt: new Date() })
+        .where(eq(usersTable.id, winnerId)),
+      db.update(usersTable)
+        .set({ eloRating: Math.max(100, newLoserElo), losses: sql`${usersTable.losses} + 1`, updatedAt: new Date() })
+        .where(eq(usersTable.id, loserId)),
+    ]);
+
+    logger.info({ winnerId, newWinnerElo, loserId, newLoserElo }, "ELO updated");
+  } else if (winnerId) {
+    await db.update(usersTable)
+      .set({ wins: sql`${usersTable.wins} + 1`, updatedAt: new Date() })
+      .where(eq(usersTable.id, winnerId));
+  } else if (loserId) {
+    await db.update(usersTable)
+      .set({ losses: sql`${usersTable.losses} + 1`, updatedAt: new Date() })
+      .where(eq(usersTable.id, loserId));
+  }
 }
 
 function tryMatch(io: Server) {
@@ -144,8 +215,8 @@ function tryMatch(io: Server) {
   const room: Room = {
     id: roomId,
     players: [
-      { socketId: s1.id, score: 0, lastRatedAt: now },
-      { socketId: s2.id, score: 0, lastRatedAt: now },
+      { socketId: s1.id, userId: socketUserMap.get(s1.id) ?? null, score: 0, lastRatedAt: now },
+      { socketId: s2.id, userId: socketUserMap.get(s2.id) ?? null, score: 0, lastRatedAt: now },
     ],
     startedAt: now,
     finished: false,

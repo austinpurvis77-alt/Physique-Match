@@ -4,8 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
-import Queue from "@/pages/queue";
 import Game from "@/pages/game";
+import Leaderboard from "@/pages/leaderboard";
 
 const queryClient = new QueryClient();
 
@@ -13,8 +13,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/queue" component={Queue} />
       <Route path="/game" component={Game} />
+      <Route path="/leaderboard" component={Leaderboard} />
       <Route component={NotFound} />
     </Switch>
   );

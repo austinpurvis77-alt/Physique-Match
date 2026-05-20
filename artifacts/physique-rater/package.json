@@ -73,6 +73,7 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "@workspace/replit-auth-web": "workspace:*"
   }
 }

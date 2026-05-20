@@ -1,9 +1,15 @@
 import { Link } from "wouter";
 import { useGetGameStats } from "@workspace/api-client-react";
-import { Users, Activity, Dumbbell, Swords, Crown } from "lucide-react";
+import { useAuth } from "@workspace/replit-auth-web";
+import { Users, Activity, Dumbbell, Swords, Crown, Trophy, LogIn, LogOut } from "lucide-react";
 
 export default function Home() {
   const { data: stats } = useGetGameStats();
+  const { user, isLoading, isAuthenticated, login, logout } = useAuth();
+
+  const displayName = user
+    ? [user.firstName, user.lastName].filter(Boolean).join(" ") || "Fighter"
+    : null;
 
   return (
     <div className="min-h-screen w-full bg-black flex flex-col relative overflow-hidden scanlines">
@@ -16,10 +22,52 @@ export default function Home() {
       {/* Vignette */}
       <div className="absolute inset-0 vignette z-10 pointer-events-none" />
 
+      {/* Top nav bar */}
+      <div className="z-30 flex items-center justify-between px-6 py-4 border-b border-border/40">
+        <Link href="/leaderboard" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors font-mono text-sm uppercase tracking-widest">
+          <Trophy className="w-4 h-4" />
+          Rankings
+        </Link>
+
+        <div className="flex items-center gap-3">
+          {isLoading ? (
+            <span className="font-mono text-xs text-muted-foreground animate-pulse">...</span>
+          ) : isAuthenticated ? (
+            <>
+              <div className="flex items-center gap-2">
+                {user?.profileImageUrl ? (
+                  <img src={user.profileImageUrl} alt="" className="w-7 h-7 rounded-full border border-primary/40" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full border border-primary/40 bg-primary/10 flex items-center justify-center text-primary font-display text-sm">
+                    {displayName?.[0] ?? "F"}
+                  </div>
+                )}
+                <span className="font-mono text-sm text-foreground">{displayName}</span>
+              </div>
+              <button
+                onClick={logout}
+                className="flex items-center gap-1 text-muted-foreground hover:text-destructive transition-colors font-mono text-xs uppercase tracking-wider"
+              >
+                <LogOut className="w-3 h-3" />
+                Out
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={login}
+              className="flex items-center gap-2 border border-primary/50 hover:border-primary px-4 py-2 font-mono text-sm text-primary uppercase tracking-wider transition-all hover:bg-primary/10"
+            >
+              <LogIn className="w-4 h-4" />
+              Log In
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="z-20 flex flex-col items-center px-6 text-center flex-1">
 
         {/* Logo Hero — pure text, no image */}
-        <div className="flex flex-col items-center pt-12 pb-6 space-y-5">
+        <div className="flex flex-col items-center pt-10 pb-6 space-y-5">
           {/* Main title — bold, tight, aggressive */}
           <h1 className="font-[family-name:--app-font-display] text-[4.5rem] md:text-[7.5rem] leading-[0.9] tracking-tight select-none">
             <span className="text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]">OME</span>
@@ -81,7 +129,7 @@ export default function Home() {
 
         {/* CTA */}
         <div className="pb-16">
-          <Link href="/queue" className="group relative inline-flex items-center justify-center pulse-glow">
+          <Link href="/game" className="group relative inline-flex items-center justify-center pulse-glow">
             <div className="absolute inset-0 bg-primary translate-y-3 translate-x-3 transition-transform duration-200 group-hover:translate-y-2 group-hover:translate-x-2 group-active:translate-y-0 group-active:translate-x-0" />
             <div className="relative flex items-center bg-black border-4 border-primary px-14 py-6 text-4xl md:text-5xl font-display uppercase tracking-[0.2em] text-foreground transition-colors group-hover:bg-primary/10">
               Enter the Arena

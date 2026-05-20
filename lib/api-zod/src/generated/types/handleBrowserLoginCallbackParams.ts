@@ -6,7 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface FrameRatingInput {
-  /** Base64-encoded JPEG image frame from user camera */
-  imageData: string;
-}
+export type HandleBrowserLoginCallbackParams = {
+code?: string;
+state?: string;
+iss?: string;
+};

@@ -5,8 +5,8 @@
  * OMEGAINS API — AI physique rating video chat arena
  * OpenAPI spec version: 0.1.0
  */
+import type { AuthUser } from './authUser';
 
-export interface FrameRatingInput {
-  /** Base64-encoded JPEG image frame from user camera */
-  imageData: string;
+export interface AuthUserEnvelope {
+  user: AuthUser | null;
 }

@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface FrameRatingInput {
-  /** Base64-encoded JPEG image frame from user camera */
-  imageData: string;
-}
+export const LogoutSuccessValue = {
+  success: true,
+} as const;
+export type LogoutSuccess = typeof LogoutSuccessValue;

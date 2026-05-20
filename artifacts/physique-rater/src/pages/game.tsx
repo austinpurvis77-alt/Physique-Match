@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { Link } from "wouter";
 import { useRateFrame } from "@workspace/api-client-react";
+import { useAuth } from "@workspace/replit-auth-web";
 import { Loader2, CameraOff, AlertTriangle, Trophy } from "lucide-react";
 
 type GameState = "idle" | "queue" | "matched" | "game-over" | "error";
@@ -34,6 +35,10 @@ export default function Game() {
   const rateFrameMutateRef = useRef(rateFrame.mutateAsync);
   rateFrameMutateRef.current = rateFrame.mutateAsync;
 
+  const { user } = useAuth();
+  const userIdRef = useRef<string | null>(null);
+  userIdRef.current = user?.id ?? null;
+
   const cleanup = useCallback(() => {
     if (ratingIntervalRef.current) clearInterval(ratingIntervalRef.current);
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
@@ -63,6 +68,10 @@ export default function Game() {
     socketRef.current = socket;
 
     socket.on("connect", () => {
+      // Identify user so ELO can be attributed
+      if (userIdRef.current) {
+        socket.emit("identify", { userId: userIdRef.current });
+      }
       socket.emit("join-queue");
     });
 
@@ -329,17 +338,25 @@ export default function Game() {
                 <h2 className={`text-6xl font-display uppercase mb-2 ${won ? 'text-primary' : 'text-destructive'}`}>
                   {won ? 'Victory' : 'Defeat'}
                 </h2>
-                <div className="flex items-center justify-center gap-6 font-display text-4xl mb-8">
+                <div className="flex items-center justify-center gap-6 font-display text-4xl mb-4">
                   <div className="text-primary">{myScore}</div>
                   <div className="text-muted-foreground text-2xl">-</div>
                   <div className="text-destructive">{opponentScore}</div>
                 </div>
+                <p className="font-mono text-xs text-muted-foreground mb-8">
+                  {won ? "ELO gained! Check the leaderboard." : "ELO adjusted. Come back stronger."}
+                </p>
               </>
             )}
             
-            <Link href="/" className="inline-block bg-primary text-primary-foreground px-8 py-4 font-display text-2xl uppercase tracking-widest hover:bg-primary/90 transition-colors">
-              Re-Enter Arena
-            </Link>
+            <div className="flex items-center justify-center gap-4">
+              <Link href="/game" className="inline-block bg-primary text-primary-foreground px-8 py-4 font-display text-2xl uppercase tracking-widest hover:bg-primary/90 transition-colors">
+                Rematch
+              </Link>
+              <Link href="/leaderboard" className="inline-block border border-primary text-primary px-6 py-4 font-display text-xl uppercase tracking-widest hover:bg-primary/10 transition-colors">
+                Rankings
+              </Link>
+            </div>
           </div>
         </div>
       )}
