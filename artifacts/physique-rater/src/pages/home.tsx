@@ -37,7 +37,7 @@ export default function Home() {
 
           <p className="text-base md:text-lg text-muted-foreground font-mono max-w-xl leading-relaxed tracking-wide">
             Face off against strangers in real-time. Every 5 seconds, AI rates your physique.
-            First to 50 points wins. No filters. Raw. Unfiltered.
+            First to 50 points wins. No filters. Raw Gains.
           </p>
         </div>
 
