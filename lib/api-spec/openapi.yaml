@@ -62,6 +62,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/GameStats"
 
+  /game/active-rooms:
+    get:
+      operationId: getActiveRooms
+      tags: [game]
+      summary: Get list of currently active matches for spectating
+      responses:
+        "200":
+          description: Active matches
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveRoomsResponse"
+
   /leaderboard:
     get:
       operationId: getLeaderboard
@@ -250,6 +263,43 @@ components:
           type: integer
         activeGames:
           type: integer
+
+    ActiveRoomPlayer:
+      type: object
+      required: [name, score]
+      properties:
+        name:
+          type: string
+        userId:
+          type: [string, 'null']
+        score:
+          type: integer
+
+    ActiveRoom:
+      type: object
+      required: [roomId, players, startedAt, spectatorCount]
+      properties:
+        roomId:
+          type: string
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActiveRoomPlayer'
+          minItems: 2
+          maxItems: 2
+        startedAt:
+          type: number
+        spectatorCount:
+          type: integer
+
+    ActiveRoomsResponse:
+      type: object
+      required: [rooms]
+      properties:
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActiveRoom'
 
     LeaderboardEntry:
       type: object

@@ -605,7 +605,13 @@ function GameArena({ onRematch }: { onRematch: () => void }) {
       socketRef.current = socket;
 
       socket.on("connect", () => {
-        if (userIdRef.current) socket.emit("identify", { userId: userIdRef.current });
+        if (userIdRef.current) {
+          const u = user;
+          const displayName = u
+            ? ([u.firstName, u.lastName].filter(Boolean).join(" ").trim() || "Fighter")
+            : "Fighter";
+          socket.emit("identify", { userId: userIdRef.current, displayName });
+        }
         socket.emit("join-queue");
       });
 

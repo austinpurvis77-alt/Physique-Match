@@ -30,6 +30,28 @@ export interface GameStats {
   activeGames: number;
 }
 
+export interface ActiveRoomPlayer {
+  name: string;
+  /** @nullable */
+  userId?: string | null;
+  score: number;
+}
+
+export interface ActiveRoom {
+  roomId: string;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  players: ActiveRoomPlayer[];
+  startedAt: number;
+  spectatorCount: number;
+}
+
+export interface ActiveRoomsResponse {
+  rooms: ActiveRoom[];
+}
+
 export interface LeaderboardEntry {
   rank: number;
   userId: string;

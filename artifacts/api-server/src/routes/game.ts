@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { RateFrameBody, GetGameStatsResponse } from "@workspace/api-zod";
-import { getStats } from "../lib/gameManager";
+import { getStats, getActiveRooms } from "../lib/gameManager";
 
 const router: IRouter = Router();
 
@@ -116,6 +116,10 @@ SCORING DISCIPLINE:
 router.get("/game/stats", async (_req, res): Promise<void> => {
   const stats = getStats();
   res.json(GetGameStatsResponse.parse(stats));
+});
+
+router.get("/game/active-rooms", (_req, res): void => {
+  res.json({ rooms: getActiveRooms() });
 });
 
 export default router;

@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ActiveRoomsResponse,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
   ErrorEnvelope,
@@ -259,6 +260,83 @@ export function useGetGameStats<TData = Awaited<ReturnType<typeof getGameStats>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetGameStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetActiveRoomsUrl = () => {
+
+
+
+
+  return `/api/game/active-rooms`
+}
+
+/**
+ * @summary Get list of currently active matches for spectating
+ */
+export const getActiveRooms = async ( options?: RequestInit): Promise<ActiveRoomsResponse> => {
+
+  return customFetch<ActiveRoomsResponse>(getGetActiveRoomsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetActiveRoomsQueryKey = () => {
+    return [
+    `/api/game/active-rooms`
+    ] as const;
+    }
+
+
+export const getGetActiveRoomsQueryOptions = <TData = Awaited<ReturnType<typeof getActiveRooms>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActiveRooms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetActiveRoomsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActiveRooms>>> = ({ signal }) => getActiveRooms({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getActiveRooms>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetActiveRoomsQueryResult = NonNullable<Awaited<ReturnType<typeof getActiveRooms>>>
+export type GetActiveRoomsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get list of currently active matches for spectating
+ */
+
+export function useGetActiveRooms<TData = Awaited<ReturnType<typeof getActiveRooms>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActiveRooms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetActiveRoomsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

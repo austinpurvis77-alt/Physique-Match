@@ -43,6 +43,28 @@ export const GetGameStatsResponse = zod.object({
 
 
 /**
+ * @summary Get list of currently active matches for spectating
+ */
+export const getActiveRoomsResponseRoomsItemPlayersMin = 2;
+export const getActiveRoomsResponseRoomsItemPlayersMax = 2;
+
+
+
+export const GetActiveRoomsResponse = zod.object({
+  "rooms": zod.array(zod.object({
+  "roomId": zod.string(),
+  "players": zod.array(zod.object({
+  "name": zod.string(),
+  "userId": zod.string().nullish(),
+  "score": zod.number()
+})).min(getActiveRoomsResponseRoomsItemPlayersMin).max(getActiveRoomsResponseRoomsItemPlayersMax),
+  "startedAt": zod.number(),
+  "spectatorCount": zod.number()
+}))
+})
+
+
+/**
  * @summary Get top players by ELO rating
  */
 export const GetLeaderboardResponse = zod.object({

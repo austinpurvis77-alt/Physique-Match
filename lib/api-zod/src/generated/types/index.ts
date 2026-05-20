@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './activeRoom';
+export * from './activeRoomPlayer';
+export * from './activeRoomsResponse';
 export * from './authorizationSessionHeaderParameter';
 export * from './authUser';
 export * from './authUserEnvelope';
