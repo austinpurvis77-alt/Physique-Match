@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useRateFrame } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { CameraOff, AlertTriangle, Trophy, Mic, MicOff } from "lucide-react";
+import { CameraOff, AlertTriangle, Trophy, Mic, MicOff, Copy, Check, Users2 } from "lucide-react";
 import * as poseDetection from "@tensorflow-models/pose-detection";
 import "@tensorflow/tfjs-backend-webgl";
 
@@ -519,7 +519,15 @@ function ScoreBreakdown({ history }: { history: RoundResult[] }) {
   );
 }
 
-function GameArena({ onRematch }: { onRematch: () => void }) {
+function GameArena({ onRematch, initialHostCode, initialJoinCode }: {
+  onRematch: () => void;
+  initialHostCode?: string;
+  initialJoinCode?: string;
+}) {
+  // Private room mode
+  const privateMode: "host" | "join" | null = initialHostCode ? "host" : initialJoinCode ? "join" : null;
+  const privateCode = initialHostCode ?? initialJoinCode ?? null;
+
   const [gameState, setGameState] = useState<GameState>("idle");
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
@@ -535,6 +543,8 @@ function GameArena({ onRematch }: { onRematch: () => void }) {
   const [scanBurst, setScanBurst] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [privateRoomError, setPrivateRoomError] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const prevOpponentScoreRef = useRef(0);
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -612,7 +622,24 @@ function GameArena({ onRematch }: { onRematch: () => void }) {
             : "Fighter";
           socket.emit("identify", { userId: userIdRef.current, displayName });
         }
-        socket.emit("join-queue");
+        if (privateMode === "host" && privateCode) {
+          socket.emit("host-private-room", { code: privateCode });
+        } else if (privateMode === "join" && privateCode) {
+          socket.emit("join-private-room", { code: privateCode });
+        } else {
+          socket.emit("join-queue");
+        }
+      });
+
+      socket.on("private-room-hosted", () => {
+        // Confirmed — now waiting for friend to join
+        // gameState already "queue" — UI will show code
+      });
+
+      socket.on("private-room-error", (data: { message: string }) => {
+        setPrivateRoomError(data.message);
+        setGameState("error");
+        setErrorMessage(data.message);
       });
 
       socket.on("matched", async (data: { roomId: string; role: "caller" | "receiver"; targetScore: number }) => {
@@ -776,7 +803,8 @@ function GameArena({ onRematch }: { onRematch: () => void }) {
 
   if (gameState === "queue") {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 gap-8">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 gap-6">
+        {/* Camera preview */}
         <div className="relative w-64 h-48 md:w-96 md:h-72 overflow-hidden border border-border bg-black">
           <video ref={localVideoRef} autoPlay playsInline muted
             className="w-full h-full object-cover grayscale-[0.2] contrast-125" />
@@ -794,14 +822,65 @@ function GameArena({ onRematch }: { onRematch: () => void }) {
           )}
         </div>
 
-        <div className="relative">
-          <div className="w-32 h-32 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-display text-3xl text-primary animate-pulse">VS</span>
+        {/* Private room host — show the code */}
+        {privateMode === "host" && privateCode ? (
+          <div className="flex flex-col items-center gap-4 border border-primary/40 bg-primary/5 px-8 py-6 max-w-xs w-full">
+            <div className="flex items-center gap-2">
+              <Users2 className="w-4 h-4 text-primary" />
+              <span className="font-mono text-xs text-primary uppercase tracking-widest font-bold">Private Room</span>
+            </div>
+            <p className="font-mono text-xs text-muted-foreground text-center">Share this code with your friend:</p>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-0.5">
+                {privateCode.split("").map((ch, i) => (
+                  <span key={i}
+                    className="w-9 h-12 flex items-center justify-center bg-black border border-primary/40 font-[family-name:--app-font-display] text-2xl text-primary"
+                    style={{ textShadow: "0 0 12px var(--primary)" }}>
+                    {ch}
+                  </span>
+                ))}
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(privateCode).then(() => {
+                    setCodeCopied(true);
+                    setTimeout(() => setCodeCopied(false), 2000);
+                  });
+                }}
+                className="p-2 border border-border hover:border-primary/50 text-muted-foreground hover:text-primary transition-colors"
+              >
+                {codeCopied ? <Check className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+            <div className="flex items-center gap-2 animate-pulse">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="font-mono text-xs text-muted-foreground">Waiting for your friend to join...</span>
+            </div>
           </div>
-        </div>
-        <h2 className="text-3xl font-display uppercase tracking-widest text-foreground">Awaiting Challenger</h2>
-        <p className="text-muted-foreground font-mono text-xs uppercase tracking-wider">Voice chat will connect automatically when matched</p>
+        ) : privateMode === "join" ? (
+          <div className="flex flex-col items-center gap-2">
+            <div className="relative">
+              <div className="w-24 h-24 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Users2 className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-display uppercase tracking-widest text-foreground">Joining Room</h2>
+            <p className="font-mono text-xs text-muted-foreground">Connecting to your friend's room...</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative">
+              <div className="w-32 h-32 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="font-display text-3xl text-primary animate-pulse">VS</span>
+              </div>
+            </div>
+            <h2 className="text-3xl font-display uppercase tracking-widest text-foreground">Awaiting Challenger</h2>
+            <p className="text-muted-foreground font-mono text-xs uppercase tracking-wider">Voice chat will connect automatically when matched</p>
+          </div>
+        )}
+
         <Link href="/" className="text-muted-foreground hover:text-destructive font-mono uppercase text-sm border-b border-transparent hover:border-destructive transition-colors pb-1">
           Back Out
         </Link>
@@ -952,6 +1031,17 @@ function GameArena({ onRematch }: { onRematch: () => void }) {
 }
 
 export default function Game() {
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const hostCode = params.get("host")?.toUpperCase() ?? undefined;
+  const joinCode = params.get("join")?.toUpperCase() ?? undefined;
   const [key, setKey] = useState(0);
-  return <GameArena key={key} onRematch={() => setKey(k => k + 1)} />;
+  return (
+    <GameArena
+      key={key}
+      onRematch={() => setKey(k => k + 1)}
+      initialHostCode={hostCode}
+      initialJoinCode={joinCode}
+    />
+  );
 }

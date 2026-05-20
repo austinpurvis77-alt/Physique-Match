@@ -22,6 +22,8 @@ export interface Room {
   finished: boolean;
 }
 
+const PRIVATE_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
 const queue: Socket[] = [];
 const rooms = new Map<string, Room>();
 const playerRoom = new Map<string, string>();
@@ -30,6 +32,7 @@ const roomSpectators = new Map<string, Set<string>>(); // roomId -> spectator so
 
 const socketUserMap = new Map<string, string>();
 const socketDisplayNameMap = new Map<string, string>();
+const privateRoomHosts = new Map<string, string>(); // code -> hostSocketId
 
 export function registerUserSocket(socketId: string, userId: string) {
   socketUserMap.set(socketId, userId);
@@ -70,6 +73,50 @@ export function setupGameManager(io: Server) {
       if (idx !== -1) {
         queue.splice(idx, 1);
         socket.emit("queue-left");
+      }
+    });
+
+    // ── Private room events ──────────────────────────────────────────────────
+    socket.on("host-private-room", (data: { code: string }) => {
+      const code = data?.code?.toUpperCase();
+      if (!code || code.length !== 6) {
+        socket.emit("private-room-error", { message: "Invalid room code." });
+        return;
+      }
+      if (privateRoomHosts.has(code)) {
+        socket.emit("private-room-error", { message: "Code already in use. Please generate a new one." });
+        return;
+      }
+      privateRoomHosts.set(code, socket.id);
+      socket.emit("private-room-hosted", { code });
+      logger.info({ socketId: socket.id, code }, "Private room hosted");
+    });
+
+    socket.on("join-private-room", (data: { code: string }) => {
+      const code = data?.code?.toUpperCase();
+      if (!code) {
+        socket.emit("private-room-error", { message: "No code provided." });
+        return;
+      }
+      const hostSocketId = privateRoomHosts.get(code);
+      if (!hostSocketId) {
+        socket.emit("private-room-error", { message: "Room not found. Ask your friend to create the room first." });
+        return;
+      }
+      const hostSocket = io.sockets.sockets.get(hostSocketId);
+      if (!hostSocket) {
+        privateRoomHosts.delete(code);
+        socket.emit("private-room-error", { message: "Host disconnected. Ask your friend to create a new room." });
+        return;
+      }
+      privateRoomHosts.delete(code);
+      directMatch(io, hostSocket, socket);
+      logger.info({ hostSocketId, joinerSocketId: socket.id, code }, "Private room matched");
+    });
+
+    socket.on("cancel-private-room", () => {
+      for (const [code, hostId] of privateRoomHosts) {
+        if (hostId === socket.id) { privateRoomHosts.delete(code); break; }
       }
     });
 
@@ -207,12 +254,47 @@ export function setupGameManager(io: Server) {
       logger.info({ socketId: socket.id }, "Client disconnected");
       const idx = queue.findIndex((s) => s.id === socket.id);
       if (idx !== -1) queue.splice(idx, 1);
+      // Clean up private room hosting on disconnect
+      for (const [code, hostId] of privateRoomHosts) {
+        if (hostId === socket.id) { privateRoomHosts.delete(code); break; }
+      }
       handleDisconnect(io, socket);
       leaveSpectate(socket);
       socketUserMap.delete(socket.id);
       socketDisplayNameMap.delete(socket.id);
     });
   });
+}
+
+function directMatch(io: Server, s1: Socket, s2: Socket) {
+  const roomId = `${s1.id}-${s2.id}`;
+  const now = Date.now();
+  const uid1 = socketUserMap.get(s1.id) ?? null;
+  const uid2 = socketUserMap.get(s2.id) ?? null;
+
+  const room: Room = {
+    id: roomId,
+    players: [
+      { socketId: s1.id, userId: uid1, score: 0, lastRatedAt: now },
+      { socketId: s2.id, userId: uid2, score: 0, lastRatedAt: now },
+    ],
+    playerNames: [
+      socketDisplayNameMap.get(s1.id) ?? "Fighter",
+      socketDisplayNameMap.get(s2.id) ?? "Fighter",
+    ],
+    playerUserIds: [uid1, uid2],
+    startedAt: now,
+    finished: false,
+  };
+
+  rooms.set(roomId, room);
+  playerRoom.set(s1.id, roomId);
+  playerRoom.set(s2.id, roomId);
+  s1.join(roomId);
+  s2.join(roomId);
+  s1.emit("matched", { roomId, role: "caller", targetScore: TARGET_SCORE });
+  s2.emit("matched", { roomId, role: "receiver", targetScore: TARGET_SCORE });
+  logger.info({ roomId, player1: s1.id, player2: s2.id }, "Direct (private) match started");
 }
 
 function leaveSpectate(socket: Socket) {
