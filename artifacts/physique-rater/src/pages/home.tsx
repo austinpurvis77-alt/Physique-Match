@@ -18,13 +18,23 @@ export default function Home() {
 
       <div className="z-20 flex flex-col items-center px-6 text-center flex-1">
 
-        {/* Logo Hero */}
-        <div className="flex flex-col items-center pt-16 pb-8 space-y-6">
-          <img
-            src="/logo.png"
-            alt="OMEGAINS"
-            className="w-56 md:w-72 h-auto mx-auto drop-shadow-[0_0_40px_rgba(139,92,246,0.3)]"
-          />
+        {/* Logo Hero — pure text, no image */}
+        <div className="flex flex-col items-center pt-12 pb-6 space-y-5">
+          {/* Main title — bold, tight, aggressive */}
+          <h1 className="font-[family-name:--app-font-display] text-[4.5rem] md:text-[7.5rem] leading-[0.9] tracking-tight select-none">
+            <span className="text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]">OME</span>
+            <span className="text-primary glow-text">GAINS</span>
+          </h1>
+
+          {/* Tagline */}
+          <div className="flex items-center gap-4">
+            <span className="h-px w-10 bg-primary/30" />
+            <span className="font-mono text-sm md:text-base text-primary tracking-[0.35em] uppercase">
+              Mog. Flex. Win.
+            </span>
+            <span className="h-px w-10 bg-primary/30" />
+          </div>
+
           <p className="text-base md:text-lg text-muted-foreground font-mono max-w-xl leading-relaxed tracking-wide">
             Face off against strangers in real-time. Every 5 seconds, AI rates your physique.
             First to 50 points wins. No filters. Raw. Unfiltered.

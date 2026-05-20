@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik+Mono+One&family=Inter:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -123,7 +123,7 @@
   --sidebar-ring: 270 85% 62%;
 
   --app-font-sans: 'Inter', sans-serif;
-  --app-font-display: 'Bebas Neue', sans-serif;
+  --app-font-display: 'Rubik Mono One', monospace;
   --app-font-mono: 'Space Mono', monospace;
   --app-font-serif: Georgia, serif;
   --radius: 2px;
