@@ -25,7 +25,7 @@ export default function Home() {
       {/* Top nav bar */}
       <div className="z-30 flex items-center justify-between px-6 py-4 border-b border-border/40">
         <div className="flex items-center gap-5">
-          <Link href="/leaderboard" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors font-mono text-sm uppercase tracking-widest">
+          <Link href="/leaderboard" className="flex items-center gap-2 border border-primary bg-primary/10 px-4 py-2 font-mono text-sm text-primary uppercase tracking-widest hover:bg-primary/25 transition-colors glow-border">
             <Trophy className="w-4 h-4" />
             Rankings
           </Link>

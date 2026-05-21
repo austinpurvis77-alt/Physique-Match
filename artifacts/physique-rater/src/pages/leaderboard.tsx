@@ -12,12 +12,42 @@ import { COSMETICS, renderName } from "../lib/cosmetics";
 
 const RANK_COLORS = ["text-yellow-400", "text-slate-300", "text-amber-600"];
 
-function EloTier({ elo }: { elo: number }) {
-  if (elo >= 1400) return <span className="text-yellow-400 font-mono text-xs uppercase tracking-widest">Champion</span>;
-  if (elo >= 1200) return <span className="text-purple-400 font-mono text-xs uppercase tracking-widest">Elite</span>;
-  if (elo >= 1100) return <span className="text-blue-400 font-mono text-xs uppercase tracking-widest">Seasoned</span>;
-  if (elo >= 1000) return <span className="text-green-400 font-mono text-xs uppercase tracking-widest">Contender</span>;
-  return <span className="text-muted-foreground font-mono text-xs uppercase tracking-widest">Rookie</span>;
+interface TierDef {
+  label: string;
+  icon: string;
+  textClass: string;
+  borderClass: string;
+  bgClass: string;
+  minElo: number;
+}
+
+const TIERS: TierDef[] = [
+  { label: "OVERLORD",  icon: "👑", minElo: 1600, textClass: "text-yellow-300",  borderClass: "border-yellow-400/70", bgClass: "bg-yellow-400/10" },
+  { label: "CHAMPION",  icon: "⚔️", minElo: 1400, textClass: "text-yellow-400",  borderClass: "border-yellow-500/60", bgClass: "bg-yellow-500/10" },
+  { label: "ELITE",     icon: "💎", minElo: 1200, textClass: "text-purple-300",  borderClass: "border-purple-400/60", bgClass: "bg-purple-500/10" },
+  { label: "VETERAN",   icon: "🔱", minElo: 1050, textClass: "text-blue-300",    borderClass: "border-blue-400/60",   bgClass: "bg-blue-500/10"   },
+  { label: "CONTENDER", icon: "⚡", minElo:  950, textClass: "text-green-400",   borderClass: "border-green-500/60",  bgClass: "bg-green-500/10"  },
+  { label: "FIGHTER",   icon: "🥊", minElo:    0, textClass: "text-orange-400",  borderClass: "border-orange-500/50", bgClass: "bg-orange-500/10" },
+];
+
+export function getTier(elo: number): TierDef {
+  return TIERS.find(t => elo >= t.minElo) ?? TIERS[TIERS.length - 1]!;
+}
+
+function EloTier({ elo, compact = false }: { elo: number; compact?: boolean }) {
+  const tier = getTier(elo);
+  if (compact) {
+    return (
+      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 border text-[10px] font-mono uppercase tracking-widest ${tier.textClass} ${tier.borderClass} ${tier.bgClass}`}>
+        {tier.icon} {tier.label}
+      </span>
+    );
+  }
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 border font-mono text-xs uppercase tracking-widest ${tier.textClass} ${tier.borderClass} ${tier.bgClass}`}>
+      {tier.icon} {tier.label}
+    </span>
+  );
 }
 
 function ShopModal({ onClose }: { onClose: () => void }) {
@@ -218,7 +248,7 @@ export default function Leaderboard() {
         {!isLoading && entries.length >= 3 && (
           <div className="flex items-end justify-center gap-4 px-6 pt-10 pb-6">
             {/* 2nd */}
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-1.5">
               <div className="w-14 h-14 rounded-full border-2 border-slate-300 bg-slate-300/10 flex items-center justify-center overflow-hidden">
                 {entries[1]?.profileImageUrl
                   ? <img src={entries[1].profileImageUrl} className="w-full h-full object-cover" alt="" />
@@ -226,15 +256,16 @@ export default function Leaderboard() {
               </div>
               {(() => {
                 const { name, nameClass } = renderName(entries[1]?.displayName ?? "", entries[1]?.activeCosmetic);
-                return <div className={`font-mono text-xs ${nameClass || "text-slate-300"}`}>{name}</div>;
+                return <div className={`font-mono text-xs text-center max-w-[80px] truncate ${nameClass || "text-slate-300"}`}>{name}</div>;
               })()}
+              <EloTier elo={entries[1]?.eloRating ?? 0} compact />
               <div className="text-slate-300 font-display text-2xl">{entries[1]?.eloRating}</div>
               <div className="bg-slate-300/20 border border-slate-300/40 w-20 h-16 flex items-end justify-center pb-2">
                 <span className="font-display text-slate-300 text-3xl">2</span>
               </div>
             </div>
             {/* 1st */}
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-1.5">
               <Crown className="w-6 h-6 text-yellow-400 mb-1" />
               <div className="w-18 h-18 rounded-full border-2 border-yellow-400 bg-yellow-400/10 flex items-center justify-center overflow-hidden" style={{ width: 72, height: 72 }}>
                 {entries[0]?.profileImageUrl
@@ -243,15 +274,16 @@ export default function Leaderboard() {
               </div>
               {(() => {
                 const { name, nameClass } = renderName(entries[0]?.displayName ?? "", entries[0]?.activeCosmetic);
-                return <div className={`font-mono text-xs ${nameClass || "text-yellow-400"}`}>{name}</div>;
+                return <div className={`font-mono text-xs text-center max-w-[90px] truncate ${nameClass || "text-yellow-400"}`}>{name}</div>;
               })()}
+              <EloTier elo={entries[0]?.eloRating ?? 0} compact />
               <div className="text-yellow-400 font-display text-3xl glow-text">{entries[0]?.eloRating}</div>
               <div className="bg-yellow-400/20 border border-yellow-400/40 w-20 h-24 flex items-end justify-center pb-2">
                 <span className="font-display text-yellow-400 text-4xl">1</span>
               </div>
             </div>
             {/* 3rd */}
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-1.5">
               <div className="w-14 h-14 rounded-full border-2 border-amber-600 bg-amber-600/10 flex items-center justify-center overflow-hidden">
                 {entries[2]?.profileImageUrl
                   ? <img src={entries[2].profileImageUrl} className="w-full h-full object-cover" alt="" />
@@ -259,8 +291,9 @@ export default function Leaderboard() {
               </div>
               {(() => {
                 const { name, nameClass } = renderName(entries[2]?.displayName ?? "", entries[2]?.activeCosmetic);
-                return <div className={`font-mono text-xs ${nameClass || "text-amber-600"}`}>{name}</div>;
+                return <div className={`font-mono text-xs text-center max-w-[80px] truncate ${nameClass || "text-amber-600"}`}>{name}</div>;
               })()}
+              <EloTier elo={entries[2]?.eloRating ?? 0} compact />
               <div className="text-amber-600 font-display text-2xl">{entries[2]?.eloRating}</div>
               <div className="bg-amber-600/20 border border-amber-600/40 w-20 h-12 flex items-end justify-center pb-2">
                 <span className="font-display text-amber-600 text-3xl">3</span>
