@@ -111,9 +111,9 @@ export default function Home() {
         <div className="w-full max-w-3xl pb-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { icon: Dumbbell, title: "Enter", desc: "Hit the arena button. No signup. No BS." },
-              { icon: Swords, title: "Battle", desc: "Get matched live. Show your physique on camera." },
-              { icon: Crown, title: "Win", desc: "AI judges every 5s. First to 50 takes the crown." },
+              { icon: Dumbbell, title: "Sign In", desc: "Create an account to track your ELO and appear on the leaderboard." },
+              { icon: Swords, title: "Battle", desc: "Get matched with a stranger. AI rates your physique every 5 seconds." },
+              { icon: Crown, title: "Win", desc: "First to 50 points takes the crown and climbs the rankings." },
             ].map((step, i) => (
               <div
                 key={i}
