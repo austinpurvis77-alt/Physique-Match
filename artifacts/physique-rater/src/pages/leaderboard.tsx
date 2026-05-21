@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+<<<<<<< HEAD
 import {
   useGetLeaderboard,
   useGetShop,
@@ -9,6 +10,11 @@ import {
 import { useAuth } from "@workspace/replit-auth-web";
 import { Trophy, ChevronLeft, Crown, Shield, Swords, LogIn, ShoppingBag, X, Zap, Check } from "lucide-react";
 import { COSMETICS, renderName } from "../lib/cosmetics";
+=======
+import { useGetLeaderboard, useGetActiveRooms } from "@workspace/api-client-react";
+import { useAuth } from "@workspace/replit-auth-web";
+import { Trophy, ChevronLeft, Crown, Shield, Swords, LogIn, Eye, Radio } from "lucide-react";
+>>>>>>> 90b1df41547601588f4525bd0ecfb8d42d0c5ea3
 
 const RANK_COLORS = ["text-yellow-400", "text-slate-300", "text-amber-600"];
 
@@ -201,12 +207,38 @@ function ShopModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function LiveBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-500/15 border border-red-500/40 rounded-sm">
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+      </span>
+      <span className="font-mono text-[9px] text-red-400 uppercase tracking-widest font-bold">Live</span>
+    </span>
+  );
+}
+
 export default function Leaderboard() {
+<<<<<<< HEAD
   const { data, isLoading, refetch: refetchLeaderboard } = useGetLeaderboard();
+=======
+  const { data, isLoading } = useGetLeaderboard();
+  const { data: activeRoomsData } = useGetActiveRooms({ query: { refetchInterval: 5000 } });
+>>>>>>> 90b1df41547601588f4525bd0ecfb8d42d0c5ea3
   const { user, isAuthenticated, login } = useAuth();
   const [showShop, setShowShop] = useState(false);
 
   const entries = data?.entries ?? [];
+  const activeRooms = activeRoomsData?.rooms ?? [];
+
+  // Build lookup: userId -> roomId for players in active matches
+  const liveUserRoomMap = new Map<string, string>();
+  for (const room of activeRooms) {
+    for (const player of room.players) {
+      if (player.userId) liveUserRoomMap.set(player.userId, room.roomId);
+    }
+  }
 
   return (
     <div className="min-h-screen w-full bg-black flex flex-col relative overflow-hidden scanlines">
@@ -245,14 +277,69 @@ export default function Leaderboard() {
           </button>
         </header>
 
+<<<<<<< HEAD
         {!isLoading && entries.length >= 3 && (
           <div className="flex items-end justify-center gap-4 px-6 pt-10 pb-6">
             {/* 2nd */}
             <div className="flex flex-col items-center gap-1.5">
               <div className="w-14 h-14 rounded-full border-2 border-slate-300 bg-slate-300/10 flex items-center justify-center overflow-hidden">
+=======
+        {/* Active matches banner */}
+        {activeRooms.length > 0 && (
+          <div className="border-b border-red-500/20 bg-red-500/5 px-6 py-3">
+            <div className="max-w-3xl mx-auto">
+              <div className="flex items-center gap-2 mb-2">
+                <Radio className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+                <span className="font-mono text-xs text-red-400 uppercase tracking-widest font-bold">
+                  {activeRooms.length} Live {activeRooms.length === 1 ? "Match" : "Matches"}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {activeRooms.map((room) => (
+                  <Link
+                    key={room.roomId}
+                    href={`/spectate/${encodeURIComponent(room.roomId)}`}
+                    className="flex items-center gap-2 border border-red-500/30 bg-red-500/10 px-3 py-2 hover:border-red-500/60 hover:bg-red-500/20 transition-colors group"
+                  >
+                    <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+                    </span>
+                    <span className="font-mono text-xs text-foreground font-bold">
+                      {room.players[0]?.name ?? "?"} <span className="text-muted-foreground font-normal">vs</span> {room.players[1]?.name ?? "?"}
+                    </span>
+                    <span className="font-[family-name:--app-font-display] text-xs text-red-400 tabular-nums">
+                      {room.players[0]?.score} — {room.players[1]?.score}
+                    </span>
+                    {room.spectatorCount > 0 && (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Eye className="w-3 h-3" />
+                        <span className="font-mono text-[10px]">{room.spectatorCount}</span>
+                      </span>
+                    )}
+                    <span className="font-mono text-[10px] text-red-400 uppercase tracking-wider group-hover:text-red-300">
+                      Watch →
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Top 3 podium */}
+        {!isLoading && entries.length >= 3 && (
+          <div className="flex items-end justify-center gap-4 px-6 pt-10 pb-6">
+            {/* 2nd */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative w-14 h-14 rounded-full border-2 border-slate-300 bg-slate-300/10 flex items-center justify-center overflow-hidden">
+>>>>>>> 90b1df41547601588f4525bd0ecfb8d42d0c5ea3
                 {entries[1]?.profileImageUrl
                   ? <img src={entries[1].profileImageUrl} className="w-full h-full object-cover" alt="" />
                   : <Shield className="w-6 h-6 text-slate-300" />}
+                {entries[1] && liveUserRoomMap.has(entries[1].userId) && (
+                  <div className="absolute -top-1 -right-1"><LiveBadge /></div>
+                )}
               </div>
               {(() => {
                 const { name, nameClass } = renderName(entries[1]?.displayName ?? "", entries[1]?.activeCosmetic);
@@ -260,6 +347,12 @@ export default function Leaderboard() {
               })()}
               <EloTier elo={entries[1]?.eloRating ?? 0} compact />
               <div className="text-slate-300 font-display text-2xl">{entries[1]?.eloRating}</div>
+              {entries[1] && liveUserRoomMap.has(entries[1].userId) && (
+                <Link href={`/spectate/${encodeURIComponent(liveUserRoomMap.get(entries[1].userId)!)}`}
+                  className="flex items-center gap-1 border border-red-500/40 text-red-400 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider hover:bg-red-500/10 transition-colors">
+                  <Eye className="w-2.5 h-2.5" /> Watch
+                </Link>
+              )}
               <div className="bg-slate-300/20 border border-slate-300/40 w-20 h-16 flex items-end justify-center pb-2">
                 <span className="font-display text-slate-300 text-3xl">2</span>
               </div>
@@ -267,10 +360,13 @@ export default function Leaderboard() {
             {/* 1st */}
             <div className="flex flex-col items-center gap-1.5">
               <Crown className="w-6 h-6 text-yellow-400 mb-1" />
-              <div className="w-18 h-18 rounded-full border-2 border-yellow-400 bg-yellow-400/10 flex items-center justify-center overflow-hidden" style={{ width: 72, height: 72 }}>
+              <div className="relative w-18 h-18 rounded-full border-2 border-yellow-400 bg-yellow-400/10 flex items-center justify-center overflow-hidden" style={{ width: 72, height: 72 }}>
                 {entries[0]?.profileImageUrl
                   ? <img src={entries[0].profileImageUrl} className="w-full h-full object-cover" alt="" />
                   : <Shield className="w-8 h-8 text-yellow-400" />}
+                {entries[0] && liveUserRoomMap.has(entries[0].userId) && (
+                  <div className="absolute -top-1 -right-1"><LiveBadge /></div>
+                )}
               </div>
               {(() => {
                 const { name, nameClass } = renderName(entries[0]?.displayName ?? "", entries[0]?.activeCosmetic);
@@ -278,16 +374,30 @@ export default function Leaderboard() {
               })()}
               <EloTier elo={entries[0]?.eloRating ?? 0} compact />
               <div className="text-yellow-400 font-display text-3xl glow-text">{entries[0]?.eloRating}</div>
+              {entries[0] && liveUserRoomMap.has(entries[0].userId) && (
+                <Link href={`/spectate/${encodeURIComponent(liveUserRoomMap.get(entries[0].userId)!)}`}
+                  className="flex items-center gap-1 border border-red-500/40 text-red-400 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider hover:bg-red-500/10 transition-colors">
+                  <Eye className="w-2.5 h-2.5" /> Watch
+                </Link>
+              )}
               <div className="bg-yellow-400/20 border border-yellow-400/40 w-20 h-24 flex items-end justify-center pb-2">
                 <span className="font-display text-yellow-400 text-4xl">1</span>
               </div>
             </div>
             {/* 3rd */}
+<<<<<<< HEAD
             <div className="flex flex-col items-center gap-1.5">
               <div className="w-14 h-14 rounded-full border-2 border-amber-600 bg-amber-600/10 flex items-center justify-center overflow-hidden">
+=======
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative w-14 h-14 rounded-full border-2 border-amber-600 bg-amber-600/10 flex items-center justify-center overflow-hidden">
+>>>>>>> 90b1df41547601588f4525bd0ecfb8d42d0c5ea3
                 {entries[2]?.profileImageUrl
                   ? <img src={entries[2].profileImageUrl} className="w-full h-full object-cover" alt="" />
                   : <Shield className="w-6 h-6 text-amber-600" />}
+                {entries[2] && liveUserRoomMap.has(entries[2].userId) && (
+                  <div className="absolute -top-1 -right-1"><LiveBadge /></div>
+                )}
               </div>
               {(() => {
                 const { name, nameClass } = renderName(entries[2]?.displayName ?? "", entries[2]?.activeCosmetic);
@@ -295,6 +405,12 @@ export default function Leaderboard() {
               })()}
               <EloTier elo={entries[2]?.eloRating ?? 0} compact />
               <div className="text-amber-600 font-display text-2xl">{entries[2]?.eloRating}</div>
+              {entries[2] && liveUserRoomMap.has(entries[2].userId) && (
+                <Link href={`/spectate/${encodeURIComponent(liveUserRoomMap.get(entries[2].userId)!)}`}
+                  className="flex items-center gap-1 border border-red-500/40 text-red-400 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider hover:bg-red-500/10 transition-colors">
+                  <Eye className="w-2.5 h-2.5" /> Watch
+                </Link>
+              )}
               <div className="bg-amber-600/20 border border-amber-600/40 w-20 h-12 flex items-end justify-center pb-2">
                 <span className="font-display text-amber-600 text-3xl">3</span>
               </div>
@@ -331,21 +447,33 @@ export default function Leaderboard() {
             </div>
           ) : (
             <div className="border border-border">
+<<<<<<< HEAD
               <div className="grid grid-cols-[3rem_1fr_auto_auto_auto] gap-4 px-4 py-3 border-b border-border bg-secondary/30">
+=======
+              {/* Column headers */}
+              <div className="grid grid-cols-[3rem_1fr_auto_auto_auto_auto] gap-3 px-4 py-3 border-b border-border bg-secondary/30">
+>>>>>>> 90b1df41547601588f4525bd0ecfb8d42d0c5ea3
                 <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest text-center">#</span>
                 <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest">Fighter</span>
                 <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest text-right">ELO</span>
                 <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest text-right">W</span>
                 <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest text-right">L</span>
+                <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest text-right">Live</span>
               </div>
 
               {entries.map((entry, i) => {
                 const isMe = user?.id === entry.userId;
+<<<<<<< HEAD
                 const { name: displayedName, nameClass } = renderName(entry.displayName, entry.activeCosmetic);
+=======
+                const liveRoomId = liveUserRoomMap.get(entry.userId);
+>>>>>>> 90b1df41547601588f4525bd0ecfb8d42d0c5ea3
                 return (
                   <div
                     key={entry.userId}
-                    className={`grid grid-cols-[3rem_1fr_auto_auto_auto] gap-4 items-center px-4 py-3 border-b border-border/40 last:border-0 transition-colors ${isMe ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-secondary/20"}`}
+                    className={`grid grid-cols-[3rem_1fr_auto_auto_auto_auto] gap-3 items-center px-4 py-3 border-b border-border/40 last:border-0 transition-colors ${
+                      liveRoomId ? "bg-red-500/5" : isMe ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-secondary/20"
+                    }`}
                   >
                     <span className={`font-display text-xl text-center ${RANK_COLORS[i] ?? "text-muted-foreground"}`}>
                       {i < 3 ? ["①", "②", "③"][i] : entry.rank}
@@ -358,9 +486,17 @@ export default function Leaderboard() {
                           : <div className="w-full h-full flex items-center justify-center text-primary font-display text-sm">{entry.displayName[0]}</div>}
                       </div>
                       <div className="min-w-0">
+<<<<<<< HEAD
                         <div className={`font-mono text-sm truncate ${nameClass || "text-foreground"}`}>
                           {displayedName}
                           {isMe && <span className="ml-2 text-primary text-xs font-mono">(you)</span>}
+=======
+                        <div className="font-mono text-sm truncate">
+                          <Link href={`/profile/${entry.userId}`} className="text-foreground hover:text-primary transition-colors">
+                            {entry.displayName}
+                          </Link>
+                          {isMe && <span className="ml-2 text-primary text-xs">(you)</span>}
+>>>>>>> 90b1df41547601588f4525bd0ecfb8d42d0c5ea3
                         </div>
                         <EloTier elo={entry.eloRating} />
                       </div>
@@ -371,6 +507,21 @@ export default function Leaderboard() {
                     </span>
                     <span className="font-mono text-sm text-green-400 tabular-nums text-right">{entry.wins}</span>
                     <span className="font-mono text-sm text-destructive tabular-nums text-right">{entry.losses}</span>
+
+                    {/* Watch button / Live badge */}
+                    <div className="flex justify-end">
+                      {liveRoomId ? (
+                        <Link
+                          href={`/spectate/${encodeURIComponent(liveRoomId)}`}
+                          className="flex items-center gap-1 border border-red-500/50 text-red-400 px-2 py-1 font-mono text-[10px] uppercase tracking-wider hover:bg-red-500/15 transition-colors whitespace-nowrap"
+                        >
+                          <Eye className="w-2.5 h-2.5" />
+                          Watch
+                        </Link>
+                      ) : (
+                        <span className="font-mono text-[10px] text-muted-foreground/30">—</span>
+                      )}
+                    </div>
                   </div>
                 );
               })}

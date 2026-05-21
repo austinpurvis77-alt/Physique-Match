@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ActiveRoomsResponse,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
   EquipCosmeticResult,
@@ -33,9 +34,13 @@ import type {
   LogoutSuccess,
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
+<<<<<<< HEAD
   SaveWarmupPointsRequest,
   ShopState,
   WarmupBalance
+=======
+  UserProfileResponse
+>>>>>>> 90b1df41547601588f4525bd0ecfb8d42d0c5ea3
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -263,6 +268,160 @@ export function useGetGameStats<TData = Awaited<ReturnType<typeof getGameStats>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetGameStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetUserProfileUrl = (userId: string,) => {
+
+
+
+
+  return `/api/profile/${userId}`
+}
+
+/**
+ * @summary Get public profile for a user
+ */
+export const getUserProfile = async (userId: string, options?: RequestInit): Promise<UserProfileResponse> => {
+
+  return customFetch<UserProfileResponse>(getGetUserProfileUrl(userId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetUserProfileQueryKey = (userId: string,) => {
+    return [
+    `/api/profile/${userId}`
+    ] as const;
+    }
+
+
+export const getGetUserProfileQueryOptions = <TData = Awaited<ReturnType<typeof getUserProfile>>, TError = ErrorType<void>>(userId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUserProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetUserProfileQueryKey(userId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUserProfile>>> = ({ signal }) => getUserProfile(userId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(userId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUserProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetUserProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getUserProfile>>>
+export type GetUserProfileQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get public profile for a user
+ */
+
+export function useGetUserProfile<TData = Awaited<ReturnType<typeof getUserProfile>>, TError = ErrorType<void>>(
+ userId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUserProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetUserProfileQueryOptions(userId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetActiveRoomsUrl = () => {
+
+
+
+
+  return `/api/game/active-rooms`
+}
+
+/**
+ * @summary Get list of currently active matches for spectating
+ */
+export const getActiveRooms = async ( options?: RequestInit): Promise<ActiveRoomsResponse> => {
+
+  return customFetch<ActiveRoomsResponse>(getGetActiveRoomsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetActiveRoomsQueryKey = () => {
+    return [
+    `/api/game/active-rooms`
+    ] as const;
+    }
+
+
+export const getGetActiveRoomsQueryOptions = <TData = Awaited<ReturnType<typeof getActiveRooms>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActiveRooms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetActiveRoomsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActiveRooms>>> = ({ signal }) => getActiveRooms({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getActiveRooms>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetActiveRoomsQueryResult = NonNullable<Awaited<ReturnType<typeof getActiveRooms>>>
+export type GetActiveRoomsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get list of currently active matches for spectating
+ */
+
+export function useGetActiveRooms<TData = Awaited<ReturnType<typeof getActiveRooms>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActiveRooms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetActiveRoomsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

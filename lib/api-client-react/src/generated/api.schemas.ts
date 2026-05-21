@@ -14,6 +14,34 @@ export interface FrameRatingInput {
   imageData: string;
 }
 
+export interface PhysiqueBreakdown {
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  muscleDef?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  leanness?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  vascularity?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  vTaper?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  posture?: number;
+}
+
 export interface FrameRatingResult {
   /**
      * Physique score from 1 to 10
@@ -23,11 +51,57 @@ export interface FrameRatingResult {
   score: number;
   /** Brief AI feedback on the physique */
   feedback: string;
+  breakdown?: PhysiqueBreakdown;
 }
 
 export interface GameStats {
   playersOnline: number;
   activeGames: number;
+}
+
+export interface ActiveRoomPlayer {
+  name: string;
+  /** @nullable */
+  userId?: string | null;
+  score: number;
+}
+
+export interface ActiveRoom {
+  roomId: string;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  players: ActiveRoomPlayer[];
+  startedAt: number;
+  spectatorCount: number;
+}
+
+export interface ActiveRoomsResponse {
+  rooms: ActiveRoom[];
+}
+
+export interface MatchHistoryEntry {
+  id: string;
+  opponentName: string;
+  /** @nullable */
+  opponentId: string | null;
+  myScore: number;
+  opponentScore: number;
+  won: boolean;
+  eloChange: number;
+  playedAt: string;
+}
+
+export interface UserProfileResponse {
+  userId: string;
+  displayName: string;
+  /** @nullable */
+  profileImageUrl?: string | null;
+  eloRating: number;
+  wins: number;
+  losses: number;
+  recentMatches: MatchHistoryEntry[];
 }
 
 export interface LeaderboardEntry {

@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './activeRoom';
+export * from './activeRoomPlayer';
+export * from './activeRoomsResponse';
 export * from './authorizationSessionHeaderParameter';
 export * from './authUser';
 export * from './authUserEnvelope';
@@ -20,9 +23,15 @@ export * from './healthStatus';
 export * from './leaderboardEntry';
 export * from './leaderboardResponse';
 export * from './logoutSuccess';
+export * from './matchHistoryEntry';
 export * from './mobileTokenExchangeRequest';
 export * from './mobileTokenExchangeSuccess';
+<<<<<<< HEAD
 export * from './saveWarmupPointsRequest';
 export * from './shopItem';
 export * from './shopState';
 export * from './warmupBalance';
+=======
+export * from './physiqueBreakdown';
+export * from './userProfileResponse';
+>>>>>>> 90b1df41547601588f4525bd0ecfb8d42d0c5ea3

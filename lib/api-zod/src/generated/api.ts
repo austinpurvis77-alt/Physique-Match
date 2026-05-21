@@ -25,11 +25,28 @@ export const RateFrameBody = zod.object({
 
 export const rateFrameResponseScoreMax = 10;
 
+export const rateFrameResponseBreakdownMuscleDefMax = 10;
+
+export const rateFrameResponseBreakdownLeannessMax = 10;
+
+export const rateFrameResponseBreakdownVascularityMax = 10;
+
+export const rateFrameResponseBreakdownVTaperMax = 10;
+
+export const rateFrameResponseBreakdownPostureMax = 10;
+
 
 
 export const RateFrameResponse = zod.object({
   "score": zod.number().min(1).max(rateFrameResponseScoreMax).describe('Physique score from 1 to 10'),
-  "feedback": zod.string().describe('Brief AI feedback on the physique')
+  "feedback": zod.string().describe('Brief AI feedback on the physique'),
+  "breakdown": zod.object({
+  "muscleDef": zod.number().min(1).max(rateFrameResponseBreakdownMuscleDefMax).optional(),
+  "leanness": zod.number().min(1).max(rateFrameResponseBreakdownLeannessMax).optional(),
+  "vascularity": zod.number().min(1).max(rateFrameResponseBreakdownVascularityMax).optional(),
+  "vTaper": zod.number().min(1).max(rateFrameResponseBreakdownVTaperMax).optional(),
+  "posture": zod.number().min(1).max(rateFrameResponseBreakdownPostureMax).optional()
+}).optional()
 })
 
 
@@ -39,6 +56,55 @@ export const RateFrameResponse = zod.object({
 export const GetGameStatsResponse = zod.object({
   "playersOnline": zod.number(),
   "activeGames": zod.number()
+})
+
+
+/**
+ * @summary Get public profile for a user
+ */
+export const GetUserProfileParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const GetUserProfileResponse = zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "profileImageUrl": zod.string().nullish(),
+  "eloRating": zod.number(),
+  "wins": zod.number(),
+  "losses": zod.number(),
+  "recentMatches": zod.array(zod.object({
+  "id": zod.string(),
+  "opponentName": zod.string(),
+  "opponentId": zod.string().nullable(),
+  "myScore": zod.number(),
+  "opponentScore": zod.number(),
+  "won": zod.boolean(),
+  "eloChange": zod.number(),
+  "playedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Get list of currently active matches for spectating
+ */
+export const getActiveRoomsResponseRoomsItemPlayersMin = 2;
+export const getActiveRoomsResponseRoomsItemPlayersMax = 2;
+
+
+
+export const GetActiveRoomsResponse = zod.object({
+  "rooms": zod.array(zod.object({
+  "roomId": zod.string(),
+  "players": zod.array(zod.object({
+  "name": zod.string(),
+  "userId": zod.string().nullish(),
+  "score": zod.number()
+})).min(getActiveRoomsResponseRoomsItemPlayersMin).max(getActiveRoomsResponseRoomsItemPlayersMax),
+  "startedAt": zod.number(),
+  "spectatorCount": zod.number()
+}))
 })
 
 

@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -26,9 +26,29 @@ if (!basePath) {
   );
 }
 
+const OPTIONAL_TFJS_STUBS = [
+  "@tensorflow/tfjs-backend-webgpu",
+];
+
+function stubOptionalTfjsDeps(): Plugin {
+  const stubId = "\0tfjs-stub";
+  return {
+    name: "stub-optional-tfjs-deps",
+    resolveId(id) {
+      if (OPTIONAL_TFJS_STUBS.includes(id)) return stubId + ":" + id;
+      return null;
+    },
+    load(id) {
+      if (id.startsWith(stubId)) return "export default {}; export const webgpu_util = {}; export const WebGPUBackend = class {};";
+      return null;
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
+    stubOptionalTfjsDeps(),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
@@ -57,6 +77,9 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+  },
+  optimizeDeps: {
+    exclude: ["@tensorflow/tfjs-backend-webgpu"],
   },
   server: {
     port,
