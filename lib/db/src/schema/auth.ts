@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 export const sessionsTable = pgTable(
   "sessions",
@@ -20,6 +20,9 @@ export const usersTable = pgTable("users", {
   eloRating: integer("elo_rating").notNull().default(1000),
   wins: integer("wins").notNull().default(0),
   losses: integer("losses").notNull().default(0),
+  warmupPoints: integer("warmup_points").notNull().default(0),
+  ownedCosmetics: text("owned_cosmetics").array().notNull().default(sql`'{}'::text[]`),
+  activeCosmetic: varchar("active_cosmetic"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

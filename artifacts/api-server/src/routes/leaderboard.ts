@@ -14,6 +14,7 @@ router.get("/leaderboard", async (_req: Request, res: Response): Promise<void> =
       eloRating: usersTable.eloRating,
       wins: usersTable.wins,
       losses: usersTable.losses,
+      activeCosmetic: usersTable.activeCosmetic,
     })
     .from(usersTable)
     .orderBy(desc(usersTable.eloRating))
@@ -27,6 +28,7 @@ router.get("/leaderboard", async (_req: Request, res: Response): Promise<void> =
     eloRating: u.eloRating,
     wins: u.wins,
     losses: u.losses,
+    activeCosmetic: u.activeCosmetic ?? null,
   }));
 
   res.json({ entries });

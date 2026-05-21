@@ -39,6 +39,37 @@ export interface LeaderboardEntry {
   eloRating: number;
   wins: number;
   losses: number;
+  /** @nullable */
+  activeCosmetic?: string | null;
+}
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  cost: number;
+  description: string;
+}
+
+export interface ShopState {
+  balance: number;
+  items: ShopItem[];
+  ownedCosmetics: string[];
+  /** @nullable */
+  activeCosmetic: string | null;
+}
+
+export interface SaveWarmupPointsRequest {
+  /** @minimum 0 */
+  points: number;
+}
+
+export interface WarmupBalance {
+  balance: number;
+}
+
+export interface EquipCosmeticResult {
+  /** @nullable */
+  activeCosmetic: string | null;
 }
 
 export interface LeaderboardResponse {

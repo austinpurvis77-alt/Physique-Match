@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useGetGameStats } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { Users, Activity, Dumbbell, Swords, Crown, Trophy, LogIn, LogOut } from "lucide-react";
+import { Users, Activity, Dumbbell, Swords, Crown, Trophy, LogIn, LogOut, ShoppingBag } from "lucide-react";
 
 export default function Home() {
   const { data: stats } = useGetGameStats();
@@ -24,10 +24,16 @@ export default function Home() {
 
       {/* Top nav bar */}
       <div className="z-30 flex items-center justify-between px-6 py-4 border-b border-border/40">
-        <Link href="/leaderboard" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors font-mono text-sm uppercase tracking-widest">
-          <Trophy className="w-4 h-4" />
-          Rankings
-        </Link>
+        <div className="flex items-center gap-5">
+          <Link href="/leaderboard" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors font-mono text-sm uppercase tracking-widest">
+            <Trophy className="w-4 h-4" />
+            Rankings
+          </Link>
+          <Link href="/leaderboard" onClick={(e) => { e.preventDefault(); window.location.href = "/leaderboard?shop=1"; }} className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors font-mono text-sm uppercase tracking-widest">
+            <ShoppingBag className="w-4 h-4" />
+            Shop
+          </Link>
+        </div>
 
         <div className="flex items-center gap-3">
           {isLoading ? (

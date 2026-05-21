@@ -22,6 +22,7 @@ import type {
 import type {
   AuthUserEnvelope,
   BeginBrowserLoginParams,
+  EquipCosmeticResult,
   ErrorEnvelope,
   FrameRatingInput,
   FrameRatingResult,
@@ -31,7 +32,10 @@ import type {
   LeaderboardResponse,
   LogoutSuccess,
   MobileTokenExchangeRequest,
-  MobileTokenExchangeSuccess
+  MobileTokenExchangeSuccess,
+  SaveWarmupPointsRequest,
+  ShopState,
+  WarmupBalance
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -347,6 +351,294 @@ export function useGetLeaderboard<TData = Awaited<ReturnType<typeof getLeaderboa
 
 
 
+
+export const getGetShopUrl = () => {
+
+
+
+
+  return `/api/shop`
+}
+
+/**
+ * @summary Get shop state for the current user
+ */
+export const getShop = async ( options?: RequestInit): Promise<ShopState> => {
+
+  return customFetch<ShopState>(getGetShopUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetShopQueryKey = () => {
+    return [
+    `/api/shop`
+    ] as const;
+    }
+
+
+export const getGetShopQueryOptions = <TData = Awaited<ReturnType<typeof getShop>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShop>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetShopQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getShop>>> = ({ signal }) => getShop({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getShop>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetShopQueryResult = NonNullable<Awaited<ReturnType<typeof getShop>>>
+export type GetShopQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get shop state for the current user
+ */
+
+export function useGetShop<TData = Awaited<ReturnType<typeof getShop>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShop>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetShopQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSaveWarmupPointsUrl = () => {
+
+
+
+
+  return `/api/shop/save-points`
+}
+
+/**
+ * @summary Add warmup points earned during queue to the user balance
+ */
+export const saveWarmupPoints = async (saveWarmupPointsRequest: SaveWarmupPointsRequest, options?: RequestInit): Promise<WarmupBalance> => {
+
+  return customFetch<WarmupBalance>(getSaveWarmupPointsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      saveWarmupPointsRequest,)
+  }
+);}
+
+
+
+
+export const getSaveWarmupPointsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveWarmupPoints>>, TError,{data: BodyType<SaveWarmupPointsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveWarmupPoints>>, TError,{data: BodyType<SaveWarmupPointsRequest>}, TContext> => {
+
+const mutationKey = ['saveWarmupPoints'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveWarmupPoints>>, {data: BodyType<SaveWarmupPointsRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveWarmupPoints(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveWarmupPointsMutationResult = NonNullable<Awaited<ReturnType<typeof saveWarmupPoints>>>
+    export type SaveWarmupPointsMutationBody = BodyType<SaveWarmupPointsRequest>
+    export type SaveWarmupPointsMutationError = ErrorType<void>
+
+    /**
+ * @summary Add warmup points earned during queue to the user balance
+ */
+export const useSaveWarmupPoints = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveWarmupPoints>>, TError,{data: BodyType<SaveWarmupPointsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveWarmupPoints>>,
+        TError,
+        {data: BodyType<SaveWarmupPointsRequest>},
+        TContext
+      > => {
+      return useMutation(getSaveWarmupPointsMutationOptions(options));
+    }
+
+export const getPurchaseCosmeticUrl = (cosmeticId: string,) => {
+
+
+
+
+  return `/api/shop/purchase/${cosmeticId}`
+}
+
+/**
+ * @summary Buy a cosmetic with warmup points
+ */
+export const purchaseCosmetic = async (cosmeticId: string, options?: RequestInit): Promise<WarmupBalance> => {
+
+  return customFetch<WarmupBalance>(getPurchaseCosmeticUrl(cosmeticId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPurchaseCosmeticMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof purchaseCosmetic>>, TError,{cosmeticId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof purchaseCosmetic>>, TError,{cosmeticId: string}, TContext> => {
+
+const mutationKey = ['purchaseCosmetic'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof purchaseCosmetic>>, {cosmeticId: string}> = (props) => {
+          const {cosmeticId} = props ?? {};
+
+          return  purchaseCosmetic(cosmeticId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PurchaseCosmeticMutationResult = NonNullable<Awaited<ReturnType<typeof purchaseCosmetic>>>
+
+    export type PurchaseCosmeticMutationError = ErrorType<void>
+
+    /**
+ * @summary Buy a cosmetic with warmup points
+ */
+export const usePurchaseCosmetic = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof purchaseCosmetic>>, TError,{cosmeticId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof purchaseCosmetic>>,
+        TError,
+        {cosmeticId: string},
+        TContext
+      > => {
+      return useMutation(getPurchaseCosmeticMutationOptions(options));
+    }
+
+export const getEquipCosmeticUrl = (cosmeticId: string,) => {
+
+
+
+
+  return `/api/shop/equip/${cosmeticId}`
+}
+
+/**
+ * @summary Equip or unequip a cosmetic (pass "none" to unequip)
+ */
+export const equipCosmetic = async (cosmeticId: string, options?: RequestInit): Promise<EquipCosmeticResult> => {
+
+  return customFetch<EquipCosmeticResult>(getEquipCosmeticUrl(cosmeticId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getEquipCosmeticMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof equipCosmetic>>, TError,{cosmeticId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof equipCosmetic>>, TError,{cosmeticId: string}, TContext> => {
+
+const mutationKey = ['equipCosmetic'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof equipCosmetic>>, {cosmeticId: string}> = (props) => {
+          const {cosmeticId} = props ?? {};
+
+          return  equipCosmetic(cosmeticId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EquipCosmeticMutationResult = NonNullable<Awaited<ReturnType<typeof equipCosmetic>>>
+
+    export type EquipCosmeticMutationError = ErrorType<void>
+
+    /**
+ * @summary Equip or unequip a cosmetic (pass "none" to unequip)
+ */
+export const useEquipCosmetic = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof equipCosmetic>>, TError,{cosmeticId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof equipCosmetic>>,
+        TError,
+        {cosmeticId: string},
+        TContext
+      > => {
+      return useMutation(getEquipCosmeticMutationOptions(options));
+    }
 
 export const getGetCurrentAuthUserUrl = () => {
 

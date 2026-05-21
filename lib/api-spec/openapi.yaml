@@ -14,6 +14,8 @@ tags:
     description: Game operations
   - name: Auth
     description: Browser and mobile authentication endpoints.
+  - name: Shop
+    description: Warmup points shop and cosmetics.
 paths:
   /healthz:
     get:
@@ -74,6 +76,100 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LeaderboardResponse"
+
+  /shop:
+    get:
+      tags: [Shop]
+      operationId: getShop
+      summary: Get shop state for the current user
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '200':
+          description: Shop state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopState'
+        '401':
+          description: Not authenticated
+
+  /shop/save-points:
+    post:
+      tags: [Shop]
+      operationId: saveWarmupPoints
+      summary: Add warmup points earned during queue to the user balance
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveWarmupPointsRequest'
+      responses:
+        '200':
+          description: Updated balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WarmupBalance'
+        '401':
+          description: Not authenticated
+
+  /shop/purchase/{cosmeticId}:
+    post:
+      tags: [Shop]
+      operationId: purchaseCosmetic
+      summary: Buy a cosmetic with warmup points
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: cosmeticId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Purchase successful, new balance returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WarmupBalance'
+        '400':
+          description: Not enough points or already owned
+        '401':
+          description: Not authenticated
+        '404':
+          description: Cosmetic not found
+
+  /shop/equip/{cosmeticId}:
+    post:
+      tags: [Shop]
+      operationId: equipCosmetic
+      summary: Equip or unequip a cosmetic (pass "none" to unequip)
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+        - name: cosmeticId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Active cosmetic updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquipCosmeticResult'
+        '400':
+          description: Cosmetic not owned
+        '401':
+          description: Not authenticated
 
   /auth/user:
     get:
@@ -269,6 +365,60 @@ components:
           type: integer
         losses:
           type: integer
+        activeCosmetic:
+          type: [string, 'null']
+
+    ShopItem:
+      type: object
+      required: [id, name, cost, description]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        cost:
+          type: integer
+        description:
+          type: string
+
+    ShopState:
+      type: object
+      required: [balance, items, ownedCosmetics, activeCosmetic]
+      properties:
+        balance:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShopItem'
+        ownedCosmetics:
+          type: array
+          items:
+            type: string
+        activeCosmetic:
+          type: [string, 'null']
+
+    SaveWarmupPointsRequest:
+      type: object
+      required: [points]
+      properties:
+        points:
+          type: integer
+          minimum: 0
+
+    WarmupBalance:
+      type: object
+      required: [balance]
+      properties:
+        balance:
+          type: integer
+
+    EquipCosmeticResult:
+      type: object
+      required: [activeCosmetic]
+      properties:
+        activeCosmetic:
+          type: [string, 'null']
 
     LeaderboardResponse:
       type: object

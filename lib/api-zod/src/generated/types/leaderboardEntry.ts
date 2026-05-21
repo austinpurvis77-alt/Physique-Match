@@ -15,4 +15,6 @@ export interface LeaderboardEntry {
   eloRating: number;
   wins: number;
   losses: number;
+  /** @nullable */
+  activeCosmetic?: string | null;
 }

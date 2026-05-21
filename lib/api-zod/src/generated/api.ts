@@ -53,8 +53,81 @@ export const GetLeaderboardResponse = zod.object({
   "profileImageUrl": zod.string().nullish(),
   "eloRating": zod.number(),
   "wins": zod.number(),
-  "losses": zod.number()
+  "losses": zod.number(),
+  "activeCosmetic": zod.string().nullish()
 }))
+})
+
+
+/**
+ * @summary Get shop state for the current user
+ */
+export const GetShopHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque session token — Bearer <sid>.')
+})
+
+export const GetShopResponse = zod.object({
+  "balance": zod.number(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "cost": zod.number(),
+  "description": zod.string()
+})),
+  "ownedCosmetics": zod.array(zod.string()),
+  "activeCosmetic": zod.string().nullable()
+})
+
+
+/**
+ * @summary Add warmup points earned during queue to the user balance
+ */
+export const SaveWarmupPointsHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque session token — Bearer <sid>.')
+})
+
+export const saveWarmupPointsBodyPointsMin = 0;
+
+
+
+export const SaveWarmupPointsBody = zod.object({
+  "points": zod.number().min(saveWarmupPointsBodyPointsMin)
+})
+
+export const SaveWarmupPointsResponse = zod.object({
+  "balance": zod.number()
+})
+
+
+/**
+ * @summary Buy a cosmetic with warmup points
+ */
+export const PurchaseCosmeticParams = zod.object({
+  "cosmeticId": zod.coerce.string()
+})
+
+export const PurchaseCosmeticHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque session token — Bearer <sid>.')
+})
+
+export const PurchaseCosmeticResponse = zod.object({
+  "balance": zod.number()
+})
+
+
+/**
+ * @summary Equip or unequip a cosmetic (pass "none" to unequip)
+ */
+export const EquipCosmeticParams = zod.object({
+  "cosmeticId": zod.coerce.string()
+})
+
+export const EquipCosmeticHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque session token — Bearer <sid>.')
+})
+
+export const EquipCosmeticResponse = zod.object({
+  "activeCosmetic": zod.string().nullable()
 })
 
 

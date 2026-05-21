@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { Link } from "wouter";
-import { useRateFrame } from "@workspace/api-client-react";
+import { useRateFrame, useSaveWarmupPoints } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { CameraOff, AlertTriangle, Trophy, Zap } from "lucide-react";
+import { CameraOff, AlertTriangle, Trophy, Zap, LogOut } from "lucide-react";
 
 type GameState = "idle" | "queue" | "matched" | "game-over" | "error";
 
@@ -92,9 +92,11 @@ function Target({
 function WarmupScreen({
   localVideoRef,
   onBack,
+  warmupScoreRef,
 }: {
   localVideoRef: React.RefObject<HTMLVideoElement | null>;
   onBack: () => void;
+  warmupScoreRef: React.MutableRefObject<number>;
 }) {
   const [targets, setTargets] = useState<WarmupTarget[]>([]);
   const [warmupScore, setWarmupScore] = useState(0);
@@ -126,6 +128,7 @@ function WarmupScreen({
   const handleHit = useCallback((target: WarmupTarget, e: React.MouseEvent) => {
     e.stopPropagation();
     scoreRef.current += target.points;
+    warmupScoreRef.current = scoreRef.current;
     setWarmupScore(scoreRef.current);
     setTargets(prev => prev.filter(t => t.id !== target.id));
 
@@ -198,8 +201,9 @@ function WarmupScreen({
           <div className="pointer-events-auto">
             <button
               onClick={onBack}
-              className="font-mono text-xs text-muted-foreground hover:text-destructive uppercase tracking-widest border-b border-transparent hover:border-destructive transition-colors pb-0.5"
+              className="flex items-center gap-2 bg-black/80 border-2 border-destructive/70 px-4 py-2.5 text-destructive font-display text-sm uppercase tracking-widest hover:bg-destructive hover:text-white transition-all duration-150 shadow-[0_0_12px_rgba(239,68,68,0.25)]"
             >
+              <LogOut className="w-4 h-4" />
               Back Out
             </button>
           </div>
@@ -258,6 +262,9 @@ export default function Game() {
   const rateFrame = useRateFrame();
   const rateFrameMutateRef = useRef(rateFrame.mutateAsync);
   rateFrameMutateRef.current = rateFrame.mutateAsync;
+
+  const saveWarmupPointsMutation = useSaveWarmupPoints();
+  const warmupScoreRef = useRef(0);
 
   const { user } = useAuth();
   const userIdRef = useRef<string | null>(null);
@@ -318,6 +325,11 @@ export default function Game() {
     });
 
     socket.on("matched", async (data: { roomId: string; role: "caller" | "receiver"; targetScore: number }) => {
+      // Save any warmup points earned while queuing
+      if (userIdRef.current && warmupScoreRef.current > 0) {
+        saveWarmupPointsMutation.mutate({ data: { points: warmupScoreRef.current } });
+        warmupScoreRef.current = 0;
+      }
       setGameState("matched");
       setTargetScore(data.targetScore);
       setMyScore(0);
@@ -470,7 +482,12 @@ export default function Game() {
         <canvas ref={canvasRef} className="hidden" />
         <WarmupScreen
           localVideoRef={localVideoRef}
+          warmupScoreRef={warmupScoreRef}
           onBack={() => {
+            if (userIdRef.current && warmupScoreRef.current > 0) {
+              saveWarmupPointsMutation.mutate({ data: { points: warmupScoreRef.current } });
+              warmupScoreRef.current = 0;
+            }
             cleanup();
             window.location.href = "/";
           }}
