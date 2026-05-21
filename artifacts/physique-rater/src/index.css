@@ -288,6 +288,16 @@
     }
   }
 
+  @keyframes pop {
+    0%   { opacity: 1; transform: translate(-50%, -50%) scale(1.4); }
+    60%  { opacity: 1; transform: translate(-50%, -120%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -180%) scale(0.8); }
+  }
+
+  .animate-pop {
+    animation: pop 0.7s ease-out forwards;
+  }
+
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
   }
